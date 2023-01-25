@@ -199,6 +199,22 @@ namespace simple
 	cycles++;
     }
 
+    void fmul(int FT, int FA, int FB)		// multiply two double-precision numbers
+    {
+	FPR[FT] = FPR[FA] * FPR[FB];
+
+	instructions++;
+	cycles++;
+    }
+
+    void fadd(int FT, int FA, int FB)		// add two double-precision numbers
+    {
+	FPR[FT] = FPR[FA] + FPR[FB];
+
+	instructions++;
+	cycles++;
+    }
+
     void zd(int FT)				// zero the contents of a floating-point register
     {
 	FPR[FT] = 0.0;

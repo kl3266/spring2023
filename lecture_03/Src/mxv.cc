@@ -12,27 +12,32 @@ namespace simple
 	uint32_t	 n	// GPR[7]
     )
     {
-	uint32_t M = simple::GPR[6];
 
-	while(simple::GPR[6])
-	{
-	    addi(r8, r5, 0);
-	    addi(r9, r7, 0);
-	    zd(f0);
+loopi:
+	cmpi(r6, 0);
+	beq(end);
+	addi(r8, r5, 0);
+	addi(r9, r7, 0);
+	zd(f0);
 
-	    while(simple::GPR[9])
-	    {
-		lfd(f1, r8);
-		lfd(f2, r4);
-		simple::FPR[0] += simple::FPR[2] * simple::FPR[1];
-		addi(r8, r8, 8);
-		addi(r4, r4, 8);
-		simple::GPR[9]--;
-	    }
-	    stfd(f0, r3);
-	    addi(r3, r3, 8);
-	    simple::GPR[6]--;
-	}
-end:    return;
+loopj:
+	cmpi(r9,0);
+	beq(nexti);
+	lfd(f1, r8);
+	lfd(f2, r4);
+	fmul(f3, f2, f1);
+	fadd(f0, f0, f3);
+	addi(r8, r8, 8);
+	addi(r4, r4, 8);
+	addi(r9, r9, -1);
+	b(loopj);
+
+nexti:
+	stfd(f0, r3);
+	addi(r3, r3, 8);
+	simple::GPR[6]--;
+	b(loopi);
+end:    
+	return;
     }
 };
