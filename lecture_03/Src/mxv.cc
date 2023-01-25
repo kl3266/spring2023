@@ -35,7 +35,7 @@ loopj:
 nexti:
 	stfd(f0, r3);
 	addi(r3, r3, 8);
-	simple::GPR[6]--;
+	addi(r6, r6, -1);
 	b(loopi);
 end:    
 	return;
