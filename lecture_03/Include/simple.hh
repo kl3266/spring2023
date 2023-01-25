@@ -48,7 +48,8 @@ namespace simple
 	r5 = 5,
 	r6 = 6,
 	r7 = 7,
-	r8 = 8
+	r8 = 8,
+	r9 = 9
     } gprnum;					// valid GPR numbers
 
     typedef enum
