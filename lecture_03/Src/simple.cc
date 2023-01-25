@@ -7,7 +7,7 @@ namespace simple
 {
     const uint32_t 	N = 65536;			// 64 KiB memory
     uint8_t     	MEM[N];     			// memory is an array of N bytes
-    uint32_t   	 	GPR[8];     			// 8 x 32-bit general purpose registers
+    uint32_t   	 	GPR[16];     			// 16 x 32-bit general purpose registers
     double              FPR[8];         		// 8 x 64-bit floating-point registers
 
     const uint32_t	latencies::MEM = 300;		// main memory latency
@@ -148,6 +148,16 @@ namespace simple
 	instructions++;
 	if (caches::L1.hit(EA)) cycles += latencies::L1;
 	else                    cycles += latencies::MEM;
+    }
+
+    void lfd(int FT, int RA)			// load double-precision number into floating-point register
+    {
+	uint32_t EA = GPR[RA];
+	FPR[FT] = *((double*)(MEM + EA));
+
+        instructions++;
+        if (caches::L1.hit(EA)) cycles += latencies::L1;
+        else                    cycles += latencies::MEM;
     }
 
     void stb(int RS, int RA)                	// store byte from register

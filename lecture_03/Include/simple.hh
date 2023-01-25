@@ -9,7 +9,7 @@ namespace simple
 {
     extern const uint32_t 	N;	
     extern uint8_t     		MEM[];  	// memory is an array of N bytes
-    extern uint32_t   	 	GPR[8];     	// 8 x 32-bit general purpose registers
+    extern uint32_t   	 	GPR[16];     	// 16 x 32-bit general purpose registers
     extern double		FPR[8];		// 8 x 64-bit floating-point registers
 
     namespace latencies
@@ -47,7 +47,8 @@ namespace simple
 	r4 = 4,
 	r5 = 5,
 	r6 = 6,
-	r7 = 7
+	r7 = 7,
+	r8 = 8
     } gprnum;					// valid GPR numbers
 
     typedef enum
