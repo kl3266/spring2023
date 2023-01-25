@@ -10,6 +10,7 @@ namespace simple
     extern const uint32_t 	N;	
     extern uint8_t     		MEM[];  	// memory is an array of N bytes
     extern uint32_t   	 	GPR[8];     	// 8 x 32-bit general purpose registers
+    extern double		FPR[8];		// 8 x 64-bit floating-point registers
 
     namespace latencies
     {
@@ -48,6 +49,18 @@ namespace simple
 	r6 = 6,
 	r7 = 7
     } gprnum;					// valid GPR numbers
+
+    typedef enum
+    {
+	f0 = 0,
+	f1 = 1,
+	f2 = 2,
+	f3 = 3,
+	f4 = 4,
+	f5 = 5,
+	f6 = 6,
+	f7 = 7
+    } fprnum;					// valid FPR numbers
 
     typedef struct
     {
@@ -109,6 +122,12 @@ namespace simple
     void addi(int RT, int RA, int16_t SI);   	// add the contents of a register to a signed integer
     bool beq(int16_t BD);                    	// branch if comparison resuts was "equal"
     bool b(int16_t BD);                      	// unconditional branch
+
+    void lfd(int FT, int RA);			// load double-precision number into a floating-point register
+    void stfd(int FS, int RA);			// store double-precision number from a floating-point register
+    void zd(int FT);				// zero floating-point register
+    void fadd(int FT, int FA, int FB);		// add two floating-point registers
+    void fmul(int FT, int FA, int FB);		// multiply two floating-point registers
 };
 
 #define b(X)	if (b(0)) goto X

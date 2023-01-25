@@ -8,12 +8,13 @@ namespace simple
     const uint32_t 	N = 65536;			// 64 KiB memory
     uint8_t     	MEM[N];     			// memory is an array of N bytes
     uint32_t   	 	GPR[8];     			// 8 x 32-bit general purpose registers
+    double              FPR[8];         		// 8 x 64-bit floating-point registers
 
     const uint32_t	latencies::MEM = 300;		// main memory latency
     const uint32_t	latencies::L1  =   2;		// L1 cache latency
     const uint32_t	params::L1::nsets = 32;		// L1 number of sets
     const uint32_t	params::L1::nways = 8;		// L1 number of ways
-    const uint32_t	params::L1::linesize = 128;	// L1 line size (bytes)
+    const uint32_t	params::L1::linesize = 8;	// L1 line size (bytes)
 
     namespace caches
     {
@@ -159,6 +160,16 @@ namespace simple
 	else                    cycles += latencies::MEM;
     }
 
+    void stfd(int FS, int RA)			// store double-precision number from floating-point register
+    {
+	uint32_t EA = GPR[RA];
+	*((double*)(MEM + EA)) = FPR[FS];
+
+	instructions++;
+	if (caches::L1.hit(EA)) cycles += latencies::L1;
+        else                    cycles += latencies::MEM;
+    }
+
     void cmpi(int RA, int16_t SI)           	// compare the contents of a register with a signed integer
     {
 	flags.LT = false; flags.GT = false; flags.EQ = false;
@@ -173,6 +184,14 @@ namespace simple
     void addi(int RT, int RA, int16_t SI)   	// add the contents of a register to a signed integer
     {
 	GPR[RT] = GPR[RA] + SI;
+
+	instructions++;
+	cycles++;
+    }
+
+    void zd(int FT)				// zero the contents of a floating-point register
+    {
+	FPR[FT] = 0.0;
 
 	instructions++;
 	cycles++;

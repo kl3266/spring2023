@@ -5,7 +5,7 @@ DEPS	= ../Include/simple.hh ../Src/simple.cc
 
 all:	${TESTS}
 
-%: 	%.cc ../Src/%.cc $(DEPS)
+%: 	%.cc ../Src/%.cc ../Include/%.hh $(DEPS)
 	${CCC} ${CCFLAGS} $< ../Src/$< -o $@
 
 clean:
