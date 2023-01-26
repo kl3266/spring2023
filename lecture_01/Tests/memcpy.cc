@@ -26,6 +26,5 @@ int main
 	if (pass) printf("PASS\n");
 	else      printf("FAIL\n");
     }
-    
     return 0;
 }
