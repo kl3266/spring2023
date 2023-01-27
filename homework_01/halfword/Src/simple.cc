@@ -38,7 +38,7 @@ namespace simple
 	cycles += latencies::MEM;
     }
 
-    void stb(int RS, int RA)                	// store halfword from register
+    void sth(int RS, int RA)                	// store halfword from register
     {
 	uint32_t EA = GPR[RA];
 	MEM[EA] = GPR[RS] & 0xff;
