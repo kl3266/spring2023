@@ -8,11 +8,14 @@ namespace simple
 {
     extern const uint32_t 	N;	
     extern uint8_t     		MEM[];  	// memory is an array of N bytes
+    extern uint16_t         MEM_h[];    // memory is an array of N halfwords
     extern uint32_t   	 	GPR[8];     	// 8 x 32-bit general purpose registers
 
     namespace latencies
     {
 	extern const uint32_t MEM;
+   	extern const uint32_t MEM_h;
+
     };
 
     typedef enum
@@ -45,8 +48,10 @@ namespace simple
     void zeromem();
     void zeroctrs();
 
-    void lhz(int RT, int RA);                	// load byte and zero-extend into a register
-    void sth(int RS, int RA);                	// store byte from register
+    void lbz(int RT, int RA);                	// load byte and zero-extend into a register
+    void stb(int RS, int RA);                	// store byte from register
+    void lhz(int RT, int RA);                	// load halfword and zero-extend into a register
+    void sth(int RS, int RA);                	// store halfword from register
     void cmpi(int RA, int16_t SI);           	// compare the contents of a register with a signed integer
     void addi(int RT, int RA, int16_t SI);   	// add the contents of a register to a signed integer
     bool beq(int16_t BD);                    	// branch if comparison resuts was "equal"

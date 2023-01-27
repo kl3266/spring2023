@@ -5,10 +5,12 @@
 namespace simple
 {
     const uint32_t 	N = 65536;		// 64 KiB memory
-    uint16_t     	MEM[N];     		// memory is an array of N halfwords
+    uint8_t     	MEM[N];     		// memory is an array of N bytes
+    uint16_t        MEM_h[N];           // memory is an array of N halfwords
     uint32_t   	 	GPR[8];     		// 8 x 32-bit general purpose registers
 
     const uint32_t	latencies::MEM = 300;	// main memory latency
+    const uint32_t	latencies::MEM_h = 300;	// main memory latency
 
     flags_t	flags;				// flags
 
@@ -20,7 +22,7 @@ namespace simple
 
     void zeromem()
     {
-	for (uint32_t i=0; i<N; i++) MEM[i] = 0;
+	for (uint32_t i=0; i<N; i++) MEM[i] = 0; MEM_h[i] = 0;
     }
 
     void zeroctrs()
@@ -29,7 +31,7 @@ namespace simple
 	cycles = 0;
     }
 
-    void lhz(int RT, int RA)                	// load halfword and zero-extend into a register
+    void lbz(int RT, int RA)                	// load halfword and zero-extend into a register
     {
 	uint32_t EA = GPR[RA];
 	GPR[RT] = MEM[EA];
@@ -38,13 +40,30 @@ namespace simple
 	cycles += latencies::MEM;
     }
 
-    void sth(int RS, int RA)                	// store halfword from register
+    void stb(int RS, int RA)                	// store halfword from register
     {
 	uint32_t EA = GPR[RA];
 	MEM[EA] = GPR[RS] & 0xff;
 
 	instructions++;
 	cycles += latencies::MEM;
+    }
+    void lhz(int RT, int RA)                	// load halfword and zero-extend into a register
+    {
+	uint32_t EA = GPR[RA];
+	GPR[RT] = MEM_h[EA];
+
+	instructions++;
+	cycles += latencies::MEM_h;
+    }
+
+    void sth(int RS, int RA)                	// store halfword from register
+    {
+	uint32_t EA = GPR[RA];
+	MEM_h[EA] = GPR[RS] & 0xff;
+
+	instructions++;
+	cycles += latencies::MEM_h;
     }
 
     void cmpi(int RA, int16_t SI)           	// compare the contents of a register with a signed integer
