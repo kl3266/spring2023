@@ -76,7 +76,7 @@ namespace simple
 	    {
 		if (sets()[setix][wayix].valid && (sets()[setix][wayix].addr == lineaddr)) break;
 	    }
-	    if      (wayix < nways())
+	    if (wayix < nways())
 	    {
 		// L1 cache hit
 		counters::L1::hits++;
