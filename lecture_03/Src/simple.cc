@@ -12,8 +12,8 @@ namespace simple
 
     const uint32_t	latencies::MEM = 300;		// main memory latency
     const uint32_t	latencies::L1  =   2;		// L1 cache latency
-    const uint32_t	params::L1::nsets = 32;		// L1 number of sets
-    const uint32_t	params::L1::nways = 8;		// L1 number of ways
+    const uint32_t	params::L1::nsets = 16;		// L1 number of sets
+    const uint32_t	params::L1::nways = 4;		// L1 number of ways
     const uint32_t	params::L1::linesize = 8;	// L1 line size (bytes)
 
     namespace caches
