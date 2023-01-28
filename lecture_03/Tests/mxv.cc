@@ -11,7 +11,7 @@ int main
     printf("L1: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n", 
 	   simple::caches::L1.capacity(), simple::caches::L1.nsets(), simple::caches::L1.nways(), simple::caches::L1.linesize());
 
-    for (uint32_t m = 2; m <= 64; m *= 2) for (uint32_t n = m; n <= m*2; n *= 2)
+    for (uint32_t m = 2; m <= 32; m *= 2) for (uint32_t n = m; n <= m*2; n *= 2)
     {
 	simple::zeromem();
 
