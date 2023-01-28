@@ -45,6 +45,8 @@ namespace simple
     void zeromem();
     void zeroctrs();
 
+    void lhz(int RT, int RA);                   // load halfword and zero-extend into a register
+    void sth(int RS, int RA);                   // store halfword from register
     void lbz(int RT, int RA);                	// load byte and zero-extend into a register
     void stb(int RS, int RA);                	// store byte from register
     void cmpi(int RA, int16_t SI);           	// compare the contents of a register with a signed integer

@@ -29,6 +29,34 @@ namespace simple
 	cycles = 0;
     }
 
+    void lhz(int RT, int RA)                	// load byte and zero-extend into a register
+    {
+    uint32_t temp = 0;
+	uint32_t EA = GPR[RA];                          // need to have MEM[EA] and MEM[EA+1] into LSBs of GPR[RT]
+    temp = MEM[EA];
+    temp <<= 8;                                 // shift a byte to the left
+    temp &= 0xFFFFFF00;                               // change LSB to 0 using masking
+    temp ^= MEM[EA+1];                          //EA & EA+1 - correct? xor correct?
+    GPR[RT] = temp;
+
+	instructions++;
+	cycles += latencies::MEM;
+    }
+
+    void sth(int RS, int RA)                	// store byte from register
+    {
+    uint32_t temp = 0;
+	uint32_t EA = GPR[RA];
+    temp = GPR[RS] & 0x0000FF00;
+    temp >>= 8;
+    MEM[EA] = temp;
+    temp = GPR[RS] & 0x000000FF;
+    MEM[EA+1] = temp;
+
+	instructions++;
+	cycles += latencies::MEM;
+    }
+
     void lbz(int RT, int RA)                	// load byte and zero-extend into a register
     {
 	uint32_t EA = GPR[RA];
