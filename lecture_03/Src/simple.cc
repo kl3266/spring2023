@@ -226,6 +226,9 @@ namespace simple
 #undef beq
     bool beq(int16_t BD)                    	// branch if comparison resuts was "equal"
     {
+	instructions++;
+	cycles++;
+
 	if (flags.EQ) { NIA = CIA + BD; return true; }
 	return false;
     }
@@ -233,6 +236,9 @@ namespace simple
 #undef b
     bool b(int16_t BD)                      	// unconditional branch
     {
+	instructions++;
+	cycles++;
+
 	NIA = CIA + BD;
 	return true;
     }
