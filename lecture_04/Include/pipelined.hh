@@ -5,6 +5,7 @@
 #include<stdint.h>
 #include<assert.h>
 #include<vector>
+#include<algorithm>
 
 namespace pipelined
 {
@@ -105,9 +106,9 @@ namespace pipelined
 	public:
 	    reg() 			{ _data = 0; _ready = 0; }
 	    const T& data() const 	{ return _data; }
-	    T& data() 			{return _data;}
-	    u64 ready() const 		{ return _ready; }
-	    void next(u64 cycle) 	{ _ready = cycle; }
+	    T& data() 			{ return _data;}
+	    const u64& ready() const 	{ return _ready; }
+	    u64& ready()		{ return _ready; }
     };
 
     extern std::vector<u8>		MEM;
@@ -123,7 +124,9 @@ namespace pipelined
 		u64	_ready;
 
 	    public:
-		unit() { _ready = 0; }
+		unit() 				{ _ready = 0; }
+	    	const u64& ready() const 	{ return _ready; }
+	    	u64& ready()			{ return _ready; }
 	};
 
 	extern unit	LDU;	// load unit
@@ -180,14 +183,21 @@ namespace pipelined
 	class operation
 	{
 	    public:
-		virtual bool execute() = 0;
-		virtual units::unit& unit() = 0;
-		virtual u32  latency() { return 1; }
-		virtual u32  throughput() { return 1; }
-		virtual bool process()
+		virtual bool 		execute() = 0;
+		virtual units::unit& 	unit() = 0;
+		virtual void 		targetready(u64 cycle) = 0;
+		virtual u32  		latency() 	{ return 1; }
+		virtual u32  		throughput() 	{ return 1; }
+		virtual u64	 	issue() 	{ return counters::cycles; }
+		virtual bool 		process()
 		{
 		    counters::operations++;
-		    counters::cycles += latency();
+		    u64 minissue = issue();
+		    u64 cycle = counters::cycles;
+		    u64 lat = latency();
+		    counters::cycles = std::max(cycle, minissue) + lat;
+		    unit().ready() = minissue + throughput();
+		    targetready(minissue + lat);
 		    return execute();
 		}
 	};
@@ -209,6 +219,7 @@ namespace pipelined
 		    return false; 
 		}
 		units::unit& unit() { return units::FXU; }
+		void targetready(u64 cycle) { GPR[_RT].ready() = cycle; }
 	};
 
 	class cmpi : public operation
@@ -229,6 +240,7 @@ namespace pipelined
 		    return false; 
 		}	
 		units::unit& unit() { return units::FXU; }
+		void targetready(u64 cycle) { }
 	};
 
 	class lbz : public operation
@@ -247,6 +259,7 @@ namespace pipelined
 		}
 		u32 latency() { u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 		units::unit& unit() { return units::LDU; }
+		void targetready(u64 cycle) { GPR[_RT].ready() = cycle; }
 	};
 
 	class stb : public operation
@@ -266,6 +279,7 @@ namespace pipelined
 		}
 		u32 latency() { u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 		units::unit& unit() { return units::STU; }
+		void targetready(u64 cycle) { }
 	};
 
 	class lfd : public operation
@@ -284,6 +298,7 @@ namespace pipelined
 		}
 		u32 latency() {  u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 		units::unit& unit() { return units::LDU; }
+		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
 	};
 
 	class stfd : public operation
@@ -302,6 +317,7 @@ namespace pipelined
 		}
 		u32 latency() {  u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 		units::unit& unit() { return units::STU; }
+		void targetready(u64 cycle) { }
 	};
 
 	class b : public operation
@@ -313,6 +329,7 @@ namespace pipelined
 		static bool execute(i16 BD) { return operations::process(new b(BD)); }
 		bool execute() { NIA = CIA + _BD; return true; }
 		units::unit& unit() { return units::BRU; }
+		void targetready(u64 cycle) { }
 	};
 
 	class beq : public operation
@@ -324,6 +341,7 @@ namespace pipelined
 		static bool execute(i16 BD) { return operations::process(new beq(BD)); }
 		bool execute() { if (flags.EQ) { NIA = CIA + _BD; return true; } else return false; }
 		units::unit& unit() { return units::BRU; }
+		void targetready(u64 cycle) { }
 	};
 
 	class zd : public operation
@@ -335,6 +353,7 @@ namespace pipelined
 		static bool execute(fprnum FT) { return operations::process(new zd(FT)); }
 		bool execute() { FPR[_FT].data() = 0.0; return false; }
 		units::unit& unit() { return units::FPU; }
+		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
 	};
 
 	class fmul : public operation
@@ -348,6 +367,7 @@ namespace pipelined
 		static bool execute(fprnum FT, fprnum FA, fprnum FB) { return operations::process(new fmul(FT, FA, FB)); }
 		bool execute() { FPR[_FT].data() = FPR[_FA].data() * FPR[_FB].data(); return false; }
 		units::unit& unit() { return units::FPU; }
+		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
 	};
 
 	class fadd : public operation
@@ -361,6 +381,7 @@ namespace pipelined
 		static bool execute(fprnum FT, fprnum FA, fprnum FB) { return operations::process(new fadd(FT, FA, FB)); }
 		bool execute() { FPR[_FT].data() = FPR[_FA].data() + FPR[_FB].data(); return false; }
 		units::unit& unit() { return units::FPU; }
+		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
 	};
     };
 
