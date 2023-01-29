@@ -19,6 +19,6 @@ loop:   cmpi(r5, 0);            // n == 0?
         addi(r7, r7, 2);        // dest+=2
         addi(r5, r5, -2);       // n-=2
         b(loop);                // end while
-end:    return dest;
+end:    return dest;                //define undef end loop b(loop)? beq(end)? what are these?
     }
 };

@@ -34,9 +34,7 @@ namespace simple
     uint32_t temp = 0;
 	uint32_t EA = GPR[RA];                          // need to have MEM[EA] and MEM[EA+1] into LSBs of GPR[RT]
     temp = MEM[EA];
-    temp <<= 8;                                 // shift a byte to the left
-    temp &= 0xFFFFFF00;                               // change LSB to 0 using masking
-    temp ^= MEM[EA+1];                          //EA & EA+1 - correct? xor correct?
+    temp = ((temp << 8) & 0xFFFFF00) ^ (MEM[EA+1] & 0x000000FF);                                 // shift a byte to the left & change LSB to 0 by masking (XOR or +?)
     GPR[RT] = temp;
 
 	instructions++;
@@ -47,6 +45,9 @@ namespace simple
     {
     uint32_t temp = 0;
 	uint32_t EA = GPR[RA];
+    //temp = GPR[RS] & 0x0000FFFF;
+    //MEM[EA] = (temp & 0x0000FF00) >> 8;
+    //MEM[EA+1] = (temp & 000000FF);
     temp = GPR[RS] & 0x0000FF00;
     temp >>= 8;
     MEM[EA] = temp;

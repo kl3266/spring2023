@@ -9,7 +9,7 @@ int main
 )
 {
     simple::zeromem();
-    const uint32_t N = 1024;
+    const uint32_t N = 1024;					// additional instruction for any n? what is this additional instruction? sth, lhz, or additional instruction for arbitrary n??
     for (uint32_t i=0; i<N; i++) simple::MEM[i] = rand() % 0xff;	// fill in MEM with random numbers
     for (uint32_t n = 1; n<=N; n *= 2)
     {
