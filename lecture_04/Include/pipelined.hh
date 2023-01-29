@@ -24,6 +24,11 @@ namespace pipelined
 	    extern const u32	N;
 	};
 
+	namespace FPR
+	{
+	    extern const u32	N;
+	};
+
 	namespace L1
 	{
 	    extern const u32	nsets;
@@ -94,6 +99,7 @@ namespace pipelined
 
     extern std::vector<u8>	MEM;
     extern std::vector<u32>	GPR;
+    extern std::vector<double>	FPR;
     extern flags_t		flags;
 
     namespace caches
@@ -222,6 +228,40 @@ namespace pipelined
 		u32 latency() { u32 EA = GPR[_RA]; return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 	};
 
+	class lfd : public operation
+	{
+	    private:
+		fprnum	_FT;
+		gprnum	_RA;
+	    public:
+		lfd(fprnum FT, gprnum RA) { _FT = FT; _RA = RA; }
+		static void execute(fprnum FT, gprnum RA) { operations::process(new lfd(FT, RA)); }
+		bool execute()
+		{
+		    u32 EA = GPR[_RA];
+		    FPR[_FT] = *((double*)(MEM.data() + EA));
+		    return false;
+		}
+		u32 latency() {  u32 EA = GPR[_RA]; return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
+	};
+
+	class stfd : public operation
+	{
+	    private:
+		fprnum _FS;
+		gprnum _RA;
+	    public:
+		stfd(fprnum FS, gprnum RA) { _FS = FS; _RA = RA; }
+		static void execute(fprnum FS, gprnum RA) { operations::process(new stfd(FS, RA)); }
+		bool execute()
+		{
+		    u32 EA = GPR[_RA];
+		    *((double*)(MEM.data() + EA)) = FPR[_FS];
+		    return false;
+		}
+		u32 latency() {  u32 EA = GPR[_RA]; return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
+	};
+
 	class b : public operation
 	{
 	    private:
@@ -240,6 +280,40 @@ namespace pipelined
 		beq(i16 BD) { _BD = BD; }
 		static bool execute(i16 BD) { return operations::process(new beq(BD)); }
 		bool execute() { if (flags.EQ) { NIA = CIA + _BD; return true; } else return false; }
+	};
+
+	class zd : public operation
+	{
+	    private:
+		fprnum	_FT;
+	    public:
+		zd(fprnum FT) { _FT = FT; }
+		static bool execute(fprnum FT) { return operations::process(new zd(FT)); }
+		bool execute() { FPR[_FT] = 0.0; return false; }
+	};
+
+	class fmul : public operation
+	{
+	    private:
+		fprnum 	_FT;
+		fprnum	_FA;
+		fprnum	_FB;
+	    public:
+		fmul(fprnum FT, fprnum FA, fprnum FB) { _FT = FT; _FA = FA; _FB = FB; }
+		static bool execute(fprnum FT, fprnum FA, fprnum FB) { return operations::process(new fmul(FT, FA, FB)); }
+		bool execute() { FPR[_FT] = FPR[_FA] * FPR[_FB]; return false; }
+	};
+
+	class fadd : public operation
+	{
+	    private:
+		fprnum 	_FT;
+		fprnum	_FA;
+		fprnum	_FB;
+	    public:
+		fadd(fprnum FT, fprnum FA, fprnum FB) { _FT = FT; _FA = FA; _FB = FB; }
+		static bool execute(fprnum FT, fprnum FA, fprnum FB) { return operations::process(new fadd(FT, FA, FB)); }
+		bool execute() { FPR[_FT] = FPR[_FA] + FPR[_FB]; return false; }
 	};
     };
 
@@ -287,6 +361,37 @@ namespace pipelined
 	{
 	    public :
 		static bool execute(i16 BD) { return operations::b::execute(BD); }
+	};
+
+	class zd : public instruction
+	{
+	    public:
+		static bool execute(fprnum FT) { return operations::zd::execute(FT); }
+	};
+
+	class fmul : public instruction
+	{
+	    public:
+		static bool execute(fprnum FT, fprnum FA, fprnum FB) { operations::fmul::execute(FT, FA, FB); }
+	};
+
+
+	class fadd : public instruction
+	{
+	    public:
+		static bool execute(fprnum FT, fprnum FA, fprnum FB) { operations::fadd::execute(FT, FA, FB); }
+	};
+
+	class lfd : public instruction
+	{
+	    public:
+		static bool execute(fprnum FT, gprnum RA) { operations::lfd::execute(FT, RA); }
+	};
+
+	class stfd : public instruction
+	{
+	    public:
+		static bool execute(fprnum FS, gprnum RA) { operations::stfd::execute(FS, RA); }
 	};
     };
 };

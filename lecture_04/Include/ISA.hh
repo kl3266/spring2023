@@ -19,4 +19,15 @@
 // 2.3. Compare instructions
 #define cmpi(RA, SI)		instructions::cmpi::execute(RA, SI)
 
+// 3. Floating-point Facility
+
+// 3.1 Load/Store instructions
+#define lfd(FT, RA)		instructions::lfd::execute(FT, RA)
+#define stfd(FS, RA)		instructions::stfd::execute(FS, RA)
+
+// 3.2. Arithmetic instructions
+#define zd(FT)			instructions::zd::execute(FT)
+#define fmul(FT, FA, FB)	instructions::fmul::execute(FT, FA, FB)
+#define fadd(FT, FA, FB)	instructions::fadd::execute(FT, FA, FB)
+
 #endif

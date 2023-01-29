@@ -9,9 +9,11 @@ namespace pipelined
     const u32 	params::L1::nways = 4;
     const u32	params::L1::linesize = 8;
     const u32	params::GPR::N = 16;
+    const u32 	params::FPR::N = 8;
 
     std::vector<u8>	MEM(params::MEM::N);
     std::vector<u32>	GPR(params::GPR::N);
+    std::vector<double>	FPR(params::FPR::N);
 
     namespace caches
     {

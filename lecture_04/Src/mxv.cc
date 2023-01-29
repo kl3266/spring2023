@@ -1,7 +1,8 @@
-#include<simple.hh>
+#include<pipelined.hh>
+#include<ISA.hh>
 #include<mxv.hh>
 
-namespace simple
+namespace pipelined
 {
     void mxv
     (
