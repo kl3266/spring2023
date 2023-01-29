@@ -42,6 +42,7 @@ namespace pipelined
     namespace counters
     {
 	extern u64	instructions;
+	extern u64	operations;
 	extern u64	cycles;
 
 	namespace L1
@@ -143,6 +144,14 @@ namespace pipelined
 	{
 	    public:
 		virtual bool execute() = 0;
+		virtual u32  latency() { return 1; }
+		virtual u32  throughput() { return 1; }
+		virtual bool process()
+		{
+		    counters::operations++;
+		    counters::cycles += latency();
+		    return execute();
+		}
 	};
 
 	bool process(operation* op);
@@ -155,7 +164,7 @@ namespace pipelined
 		i16	_SI;
 	    public:
 		addi(gprnum RT, gprnum RA, i16 SI) { _RT = RT; _RA = RA, _SI = SI; }
-		static void execute(gprnum RT, gprnum RA, i16 SI) { process(new addi(RT, RA, SI)); }
+		static void execute(gprnum RT, gprnum RA, i16 SI) { operations::process(new addi(RT, RA, SI)); }
 		bool execute() { GPR[_RT] = GPR[_RA] + _SI; return false; }
 	};
 
@@ -166,7 +175,7 @@ namespace pipelined
 		i16	_SI;
 	    public:
 		cmpi(gprnum RA, i16 SI) { _RA = RA; _SI = SI; }
-		static void execute(gprnum RA, i16 SI) { process(new cmpi(RA, SI)); }
+		static void execute(gprnum RA, i16 SI) { operations::process(new cmpi(RA, SI)); }
 		bool execute() 
 		{
 		    flags.LT = false; flags.GT = false; flags.EQ = false;
@@ -185,13 +194,14 @@ namespace pipelined
 		gprnum	_RA;
 	    public:
 		lbz(gprnum RT, gprnum RA) { _RT = RT; _RA = RA; }
-		static void execute(gprnum RT, gprnum RA) { process(new lbz(RT, RA)); }
+		static void execute(gprnum RT, gprnum RA) { operations::process(new lbz(RT, RA)); }
 		bool execute() 
 		{ 
-		    uint32_t EA = GPR[_RA]; 
+		    u32 EA = GPR[_RA]; 
 		    GPR[_RT] = MEM[EA];
 		    return false; 
 		}
+		u32 latency() { u32 EA = GPR[_RA]; return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 	};
 
 	class stb : public operation
@@ -201,7 +211,7 @@ namespace pipelined
 		gprnum	_RA;
 	    public:
 		stb(gprnum RS, gprnum RA) { _RS = RS; _RA = RA; }
-		static void execute(gprnum RS, gprnum RA) { process(new stb(RS, RA)); }
+		static void execute(gprnum RS, gprnum RA) { operations::process(new stb(RS, RA)); }
 		bool execute() 
 		{
 		    uint32_t EA = GPR[_RA];
@@ -209,6 +219,7 @@ namespace pipelined
 
 		    return false; 
 		}
+		u32 latency() { u32 EA = GPR[_RA]; return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 	};
 
 	class b : public operation
@@ -217,7 +228,7 @@ namespace pipelined
 		i16	_BD;
 	    public:
 		b(i16 BD) { _BD = BD; }
-		static bool execute(i16 BD) { return process(new b(BD)); }
+		static bool execute(i16 BD) { return operations::process(new b(BD)); }
 		bool execute() { NIA = CIA + _BD; return true; }
 	};
 
@@ -227,7 +238,7 @@ namespace pipelined
 		i16	_BD;
 	    public:
 		beq(i16 BD) { _BD = BD; }
-		static bool execute(i16 BD) { return process(new beq(BD)); }
+		static bool execute(i16 BD) { return operations::process(new beq(BD)); }
 		bool execute() { if (flags.EQ) { NIA = CIA + _BD; return true; } else return false; }
 	};
     };

@@ -118,6 +118,7 @@ namespace pipelined
     uint32_t    NIA;                            // next instruction address
 
     uint64_t    counters::instructions = 0;     // instruction counter
+    uint64_t    counters::operations = 0;       // operation counter
     uint64_t    counters::cycles = 0;           // cycle counter
     uint64_t    counters::L1::hits = 0;         // L1 hits
     uint64_t    counters::L1::misses = 0;       // L1 misses
@@ -131,6 +132,7 @@ namespace pipelined
     void zeroctrs()
     {
 	counters::instructions = 0;
+	counters::operations = 0;
 	counters::cycles = 0;
         counters::L1::accesses = 0;
         counters::L1::hits = 0;
@@ -139,6 +141,6 @@ namespace pipelined
 
     namespace operations
     {
-	bool process(operation* op) { return op->execute(); } 
+	bool process(operation* op) { return op->process(); } 
     };
 };
