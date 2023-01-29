@@ -38,24 +38,24 @@ namespace simple
     GPR[RT] = temp;
 
 	instructions++;
-	cycles += latencies::MEM;
+	cycles += (2*(latencies::MEM));
     }
 
     void sth(int RS, int RA)                	// store byte from register
     {
     uint32_t temp = 0;
 	uint32_t EA = GPR[RA];
-    //temp = GPR[RS] & 0x0000FFFF;
-    //MEM[EA] = (temp & 0x0000FF00) >> 8;
-    //MEM[EA+1] = (temp & 000000FF);
-    temp = GPR[RS] & 0x0000FF00;
-    temp >>= 8;
-    MEM[EA] = temp;
-    temp = GPR[RS] & 0x000000FF;
-    MEM[EA+1] = temp;
+    temp = GPR[RS] & 0x0000FFFF;
+    MEM[EA] = (temp & 0x0000FF00) >> 8;
+    MEM[EA+1] = (temp & 000000FF);
+    //temp = GPR[RS] & 0x0000FF00;
+    //temp >>= 8;
+    //MEM[EA] = temp;
+    //temp = GPR[RS] & 0x000000FF;
+    //MEM[EA+1] = temp;
 
 	instructions++;
-	cycles += latencies::MEM;
+	cycles += (2*(latencies::MEM));
     }
 
     void lbz(int RT, int RA)                	// load byte and zero-extend into a register
