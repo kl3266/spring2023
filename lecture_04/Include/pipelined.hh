@@ -156,7 +156,7 @@ namespace pipelined
 	    public:
 		addi(gprnum RT, gprnum RA, i16 SI) { _RT = RT; _RA = RA, _SI = SI; }
 		static void execute(gprnum RT, gprnum RA, i16 SI) { process(new addi(RT, RA, SI)); }
-		bool execute() { assert(false); return false; }
+		bool execute() { GPR[_RT] = GPR[_RA] + _SI; return false; }
 	};
 
 	class cmpi : public operation
@@ -167,7 +167,15 @@ namespace pipelined
 	    public:
 		cmpi(gprnum RA, i16 SI) { _RA = RA; _SI = SI; }
 		static void execute(gprnum RA, i16 SI) { process(new cmpi(RA, SI)); }
-		bool execute() { assert(false); return false; }
+		bool execute() 
+		{
+		    flags.LT = false; flags.GT = false; flags.EQ = false;
+		    if      (GPR[_RA] < _SI) flags.LT = true;
+        	    else if (GPR[_RA] > _SI) flags.GT = true;
+        	    else                     flags.EQ = true;
+
+		    return false; 
+		}	
 	};
 
 	class lbz : public operation
@@ -178,7 +186,12 @@ namespace pipelined
 	    public:
 		lbz(gprnum RT, gprnum RA) { _RT = RT; _RA = RA; }
 		static void execute(gprnum RT, gprnum RA) { process(new lbz(RT, RA)); }
-		bool execute() { assert(false); return false; }
+		bool execute() 
+		{ 
+		    uint32_t EA = GPR[_RA]; 
+		    GPR[_RT] = MEM[EA];
+		    return false; 
+		}
 	};
 
 	class stb : public operation
@@ -189,7 +202,13 @@ namespace pipelined
 	    public:
 		stb(gprnum RS, gprnum RA) { _RS = RS; _RA = RA; }
 		static void execute(gprnum RS, gprnum RA) { process(new stb(RS, RA)); }
-		bool execute() { assert(false); return false; }
+		bool execute() 
+		{
+		    uint32_t EA = GPR[_RA];
+                    MEM[EA] = GPR[_RS] & 0xff;
+
+		    return false; 
+		}
 	};
 
 	class b : public operation
@@ -199,7 +218,7 @@ namespace pipelined
 	    public:
 		b(i16 BD) { _BD = BD; }
 		static bool execute(i16 BD) { return process(new b(BD)); }
-		bool execute() { assert(false); return false; }
+		bool execute() { NIA = CIA + _BD; return true; }
 	};
 
 	class beq : public operation
@@ -209,7 +228,7 @@ namespace pipelined
 	    public:
 		beq(i16 BD) { _BD = BD; }
 		static bool execute(i16 BD) { return process(new beq(BD)); }
-		bool execute() { assert(false); return false; }
+		bool execute() { if (flags.EQ) { NIA = CIA + _BD; return true; } else return false; }
 	};
     };
 
