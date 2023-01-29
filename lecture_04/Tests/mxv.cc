@@ -28,11 +28,11 @@ int main
 	for (uint32_t j=0; j<N; j++) *((double*)(pipelined::MEM.data() + X + j*sizeof(double))) = (double)j;
 	for (uint32_t i=0; i<M; i++) for (uint32_t j=0; j<N; j++) *((double*)(pipelined::MEM.data() + A + (i*N+j)*sizeof(double))) = (double)i;
 
-	pipelined::GPR[3] = Y;
-	pipelined::GPR[4] = A;
-	pipelined::GPR[5] = X;
-	pipelined::GPR[6] = M;
-	pipelined::GPR[7] = N;
+	pipelined::GPR[3].data() = Y;
+	pipelined::GPR[4].data() = A;
+	pipelined::GPR[5].data() = X;
+	pipelined::GPR[6].data() = M;
+	pipelined::GPR[7].data() = N;
 	
 	pipelined::zeroctrs();
 	pipelined::caches::L1.clear();

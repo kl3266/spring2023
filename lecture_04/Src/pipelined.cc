@@ -11,9 +11,15 @@ namespace pipelined
     const u32	params::GPR::N = 16;
     const u32 	params::FPR::N = 8;
 
-    std::vector<u8>	MEM(params::MEM::N);
-    std::vector<u32>	GPR(params::GPR::N);
-    std::vector<double>	FPR(params::FPR::N);
+    std::vector<u8>		MEM(params::MEM::N);
+    std::vector<reg<u32>>	GPR(params::GPR::N);
+    std::vector<reg<double>>	FPR(params::FPR::N);
+
+    units::unit			units::LDU;
+    units::unit			units::STU;
+    units::unit			units::FXU;
+    units::unit			units::FPU;
+    units::unit			units::BRU;
 
     namespace caches
     {
