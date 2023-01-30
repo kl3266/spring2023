@@ -218,7 +218,7 @@ namespace pipelined
 		i16	_SI;
 	    public:
 		addi(gprnum RT, gprnum RA, i16 SI) { _RT = RT; _RA = RA, _SI = SI; }
-		static void execute(gprnum RT, gprnum RA, i16 SI) { operations::process(new addi(RT, RA, SI)); }
+		static bool execute(gprnum RT, gprnum RA, i16 SI) { return operations::process(new addi(RT, RA, SI)); }
 		bool execute() 
 		{ 
 		    GPR[_RT].data() = GPR[_RA].data() + _SI; 
@@ -236,7 +236,7 @@ namespace pipelined
 		i16	_SI;
 	    public:
 		cmpi(gprnum RA, i16 SI) { _RA = RA; _SI = SI; }
-		static void execute(gprnum RA, i16 SI) { operations::process(new cmpi(RA, SI)); }
+		static bool execute(gprnum RA, i16 SI) { return operations::process(new cmpi(RA, SI)); }
 		bool execute() 
 		{
 		    flags.LT = false; flags.GT = false; flags.EQ = false;
@@ -258,7 +258,7 @@ namespace pipelined
 		gprnum	_RA;
 	    public:
 		lbz(gprnum RT, gprnum RA) { _RT = RT; _RA = RA; }
-		static void execute(gprnum RT, gprnum RA) { operations::process(new lbz(RT, RA)); }
+		static bool execute(gprnum RT, gprnum RA) { return operations::process(new lbz(RT, RA)); }
 		bool execute() 
 		{ 
 		    u32 EA = GPR[_RA].data(); 
@@ -278,7 +278,7 @@ namespace pipelined
 		gprnum	_RA;
 	    public:
 		stb(gprnum RS, gprnum RA) { _RS = RS; _RA = RA; }
-		static void execute(gprnum RS, gprnum RA) { operations::process(new stb(RS, RA)); }
+		static bool execute(gprnum RS, gprnum RA) { return operations::process(new stb(RS, RA)); }
 		bool execute() 
 		{
 		    uint32_t EA = GPR[_RA].data();
@@ -299,7 +299,7 @@ namespace pipelined
 		gprnum	_RA;
 	    public:
 		lfd(fprnum FT, gprnum RA) { _FT = FT; _RA = RA; }
-		static void execute(fprnum FT, gprnum RA) { operations::process(new lfd(FT, RA)); }
+		static bool execute(fprnum FT, gprnum RA) { return operations::process(new lfd(FT, RA)); }
 		bool execute()
 		{
 		    u32 EA = GPR[_RA].data();
@@ -319,7 +319,7 @@ namespace pipelined
 		gprnum _RA;
 	    public:
 		stfd(fprnum FS, gprnum RA) { _FS = FS; _RA = RA; }
-		static void execute(fprnum FS, gprnum RA) { operations::process(new stfd(FS, RA)); }
+		static bool execute(fprnum FS, gprnum RA) { return operations::process(new stfd(FS, RA)); }
 		bool execute()
 		{
 		    u32 EA = GPR[_RA].data();
@@ -408,32 +408,28 @@ namespace pipelined
 	{
 	};
 
-	class nop : public instruction
-	{
-	};
-
 	class addi : public instruction
 	{
 	    public:
-		static void execute(gprnum RT, gprnum RA, i16 SI) { operations::addi::execute(RT, RA, SI); }
+		static bool execute(gprnum RT, gprnum RA, i16 SI) { return operations::addi::execute(RT, RA, SI); }
 	};
 
 	class cmpi : public instruction
 	{
 	    public:
-		static void execute(gprnum RA, i16 SI) { operations::cmpi::execute(RA, SI); }
+		static bool execute(gprnum RA, i16 SI) { return operations::cmpi::execute(RA, SI); }
 	};
 
 	class lbz : public instruction
 	{
 	    public:
-		static void execute(gprnum RT, gprnum RA) { operations::lbz::execute(RT, RA); }
+		static bool execute(gprnum RT, gprnum RA) { return operations::lbz::execute(RT, RA); }
 	};
 
 	class stb : public instruction
 	{
 	    public:
-		static void execute(gprnum RS, gprnum RA) { operations::stb::execute(RS, RA); }
+		static bool execute(gprnum RS, gprnum RA) { return operations::stb::execute(RS, RA); }
 	};
 
 	class beq : public instruction
@@ -457,26 +453,26 @@ namespace pipelined
 	class fmul : public instruction
 	{
 	    public:
-		static bool execute(fprnum FT, fprnum FA, fprnum FB) { operations::fmul::execute(FT, FA, FB); }
+		static bool execute(fprnum FT, fprnum FA, fprnum FB) { return operations::fmul::execute(FT, FA, FB); }
 	};
 
 
 	class fadd : public instruction
 	{
 	    public:
-		static bool execute(fprnum FT, fprnum FA, fprnum FB) { operations::fadd::execute(FT, FA, FB); }
+		static bool execute(fprnum FT, fprnum FA, fprnum FB) { return operations::fadd::execute(FT, FA, FB); }
 	};
 
 	class lfd : public instruction
 	{
 	    public:
-		static bool execute(fprnum FT, gprnum RA) { operations::lfd::execute(FT, RA); }
+		static bool execute(fprnum FT, gprnum RA) { return operations::lfd::execute(FT, RA); }
 	};
 
 	class stfd : public instruction
 	{
 	    public:
-		static bool execute(fprnum FS, gprnum RA) { operations::stfd::execute(FS, RA); }
+		static bool execute(fprnum FS, gprnum RA) { return operations::stfd::execute(FS, RA); }
 	};
     };
 };
