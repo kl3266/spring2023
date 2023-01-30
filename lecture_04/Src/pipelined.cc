@@ -128,6 +128,7 @@ namespace pipelined
     uint64_t    counters::instructions = 0;     // instruction counter
     uint64_t    counters::operations = 0;       // operation counter
     uint64_t    counters::cycles = 0;           // cycle counter
+    uint64_t    counters::lastissued = 0;       // last issue cycle
     uint64_t    counters::L1::hits = 0;         // L1 hits
     uint64_t    counters::L1::misses = 0;       // L1 misses
     uint64_t    counters::L1::accesses = 0;     // L1 accesses
@@ -142,9 +143,17 @@ namespace pipelined
 	counters::instructions = 0;
 	counters::operations = 0;
 	counters::cycles = 0;
+	counters::lastissued = 0;
         counters::L1::accesses = 0;
         counters::L1::hits = 0;
         counters::L1::misses = 0;
+	for (uint32_t i=0; i<params::GPR::N; i++) GPR[i].ready() = 0;
+	for (uint32_t i=0; i<params::FPR::N; i++) FPR[i].ready() = 0;
+	units::FXU.ready() = 0;
+	units::FPU.ready() = 0;
+	units::LDU.ready() = 0;
+	units::STU.ready() = 0;
+	units::BRU.ready() = 0;
     }
 
     namespace operations

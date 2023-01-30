@@ -50,6 +50,7 @@ namespace pipelined
 	extern u64	instructions;
 	extern u64	operations;
 	extern u64	cycles;
+	extern u64	lastissued;
 
 	namespace L1
 	{
@@ -178,6 +179,10 @@ namespace pipelined
     void zeromem();
     void zeroctrs();
 
+    static u64 max(u64 a, u64 b)		{ return a >= b ? a : b; }
+    static u64 max(u64 a, u64 b, u64 c) 	{ return max(a, max(b,c)); }
+    static u64 max(u64 a, u64 b, u64 c, u64 d)	{ return max(a, max(b, c, d)); }
+
     namespace operations
     {
 	class operation
@@ -188,16 +193,17 @@ namespace pipelined
 		virtual void 		targetready(u64 cycle) = 0;
 		virtual u32  		latency() 	{ return 1; }
 		virtual u32  		throughput() 	{ return 1; }
-		virtual u64	 	issue() 	{ return counters::cycles; }
+		virtual u64	 	ready() = 0;
 		virtual bool 		process()
 		{
-		    counters::operations++;
-		    u64 minissue = issue();
-		    u64 cycle = counters::cycles;
-		    u64 lat = latency();
-		    counters::cycles = std::max(cycle, minissue) + lat;
-		    unit().ready() = minissue + throughput();
-		    targetready(minissue + lat);
+		    counters::operations++;					// increment operation count
+		    u64 minissue = max(ready(), counters::lastissued + 1); 	// earliest time operation can issue based on dependences
+		    u64 cycle = counters::cycles;				// current cycle count
+		    u64 lat = latency();					// call latency just once, since it performs a cache access!
+		    counters::cycles = std::max(cycle, minissue + lat); 	// current cycle could advance to the end of this operation
+		    unit().ready() = minissue + throughput();			// unit will be ready again after inverse throughput cycles
+		    targetready(minissue + lat);				// update ready time for output register
+		    counters::lastissued = minissue;				// update time of last issue
 		    return execute();
 		}
 	};
@@ -220,6 +226,7 @@ namespace pipelined
 		}
 		units::unit& unit() { return units::FXU; }
 		void targetready(u64 cycle) { GPR[_RT].ready() = cycle; }
+		u64 ready() { return max(GPR[_RA].ready(), unit().ready()) + 1; }
 	};
 
 	class cmpi : public operation
@@ -241,6 +248,7 @@ namespace pipelined
 		}	
 		units::unit& unit() { return units::FXU; }
 		void targetready(u64 cycle) { }
+		u64 ready() { return max(GPR[_RA].ready(), unit().ready()) + 1; }
 	};
 
 	class lbz : public operation
@@ -260,6 +268,7 @@ namespace pipelined
 		u32 latency() { u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 		units::unit& unit() { return units::LDU; }
 		void targetready(u64 cycle) { GPR[_RT].ready() = cycle; }
+		u64 ready() { return max(GPR[_RA].ready(), unit().ready()) + 1; }
 	};
 
 	class stb : public operation
@@ -280,6 +289,7 @@ namespace pipelined
 		u32 latency() { u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 		units::unit& unit() { return units::STU; }
 		void targetready(u64 cycle) { }
+		u64 ready() { return max(GPR[_RA].ready(), GPR[_RS].ready(), unit().ready()) + 1; }
 	};
 
 	class lfd : public operation
@@ -299,6 +309,7 @@ namespace pipelined
 		u32 latency() {  u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 		units::unit& unit() { return units::LDU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
+		u64 ready() { return max(GPR[_RA].ready(), unit().ready()) + 1; }
 	};
 
 	class stfd : public operation
@@ -318,6 +329,7 @@ namespace pipelined
 		u32 latency() {  u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 		units::unit& unit() { return units::STU; }
 		void targetready(u64 cycle) { }
+		u64 ready() { return max(GPR[_RA].ready(), FPR[_FS].ready(), unit().ready()) + 1; }
 	};
 
 	class b : public operation
@@ -330,6 +342,7 @@ namespace pipelined
 		bool execute() { NIA = CIA + _BD; return true; }
 		units::unit& unit() { return units::BRU; }
 		void targetready(u64 cycle) { }
+		u64 ready() { return 0; }
 	};
 
 	class beq : public operation
@@ -342,6 +355,7 @@ namespace pipelined
 		bool execute() { if (flags.EQ) { NIA = CIA + _BD; return true; } else return false; }
 		units::unit& unit() { return units::BRU; }
 		void targetready(u64 cycle) { }
+		u64 ready() { return 0; }
 	};
 
 	class zd : public operation
@@ -354,6 +368,7 @@ namespace pipelined
 		bool execute() { FPR[_FT].data() = 0.0; return false; }
 		units::unit& unit() { return units::FPU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
+		u64 ready() { return 0; }
 	};
 
 	class fmul : public operation
@@ -368,6 +383,7 @@ namespace pipelined
 		bool execute() { FPR[_FT].data() = FPR[_FA].data() * FPR[_FB].data(); return false; }
 		units::unit& unit() { return units::FPU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
+		u64 ready() { return max(FPR[_FA].ready(), FPR[_FB].ready(), unit().ready()) + 1; }
 	};
 
 	class fadd : public operation
@@ -382,6 +398,7 @@ namespace pipelined
 		bool execute() { FPR[_FT].data() = FPR[_FA].data() + FPR[_FB].data(); return false; }
 		units::unit& unit() { return units::FPU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
+		u64 ready() { return max(FPR[_FA].ready(), FPR[_FB].ready(), unit().ready()) + 1; }
 	};
     };
 
