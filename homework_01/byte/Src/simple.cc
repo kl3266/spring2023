@@ -47,7 +47,7 @@ namespace simple
 	uint32_t EA = GPR[RA];
     temp = GPR[RS] & 0x0000FFFF;
     MEM[EA] = (temp & 0x0000FF00) >> 8;
-    MEM[EA+1] = (temp & 000000FF);
+    MEM[EA+1] = (temp & 0x000000FF);
     //temp = GPR[RS] & 0x0000FF00;
     //temp >>= 8;
     //MEM[EA] = temp;
