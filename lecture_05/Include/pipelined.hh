@@ -179,6 +179,7 @@ namespace pipelined
     void zeromem();
     void zeroctrs();
 
+    static u64 max(u64 a)			{ return a; }
     static u64 max(u64 a, u64 b)		{ return a >= b ? a : b; }
     static u64 max(u64 a, u64 b, u64 c) 	{ return max(a, max(b,c)); }
     static u64 max(u64 a, u64 b, u64 c, u64 d)	{ return max(a, max(b, c, d)); }
@@ -188,21 +189,22 @@ namespace pipelined
 	class operation
 	{
 	    public:
-		virtual bool 		execute() = 0;
-		virtual units::unit& 	unit() = 0;
-		virtual void 		targetready(u64 cycle) = 0;
-		virtual u32  		latency() 	{ return 1; }
-		virtual u32  		throughput() 	{ return 1; }
-		virtual u64	 	ready() = 0;
-		virtual bool 		process()
+		virtual bool 		execute() = 0;				// operation semantics
+		virtual units::unit& 	unit() = 0;				// functional unit for this operation
+		virtual void 		targetready(u64 cycle) = 0;		// update ready time of output
+		virtual u32  		latency() 	{ return 1; }		// operation latency
+		virtual u32  		throughput() 	{ return 1; }		// operation throughput
+		virtual u64	 	ready() = 0;				// time inputs are ready
+		virtual bool 		process()				// process this operation
 		{
 		    counters::operations++;					// increment operation count
-		    u64 minissue = max(ready(), counters::lastissued + 1); 	// earliest time operation can issue based on dependences
+		    u64 minissue = ready();					// inputs ready
+		    minissue = max(minissue, unit().ready()) + 1;		// and functional unit ready
+		    minissue = max(minissue, counters::lastissued + 1);		// and after last issue
 		    u64 cycle = counters::cycles;				// current cycle count
-		    u64 lat = latency();					// call latency just once, since it performs a cache access!
-		    counters::cycles = std::max(cycle, minissue + lat); 	// current cycle could advance to the end of this operation
+		    counters::cycles = std::max(cycle, minissue + latency()); 	// current cycle could advance to the end of this operation
 		    unit().ready() = minissue + throughput();			// unit will be ready again after inverse throughput cycles
-		    targetready(minissue + lat);				// update ready time for output register
+		    targetready(minissue + latency());				// update ready time for output register
 		    counters::lastissued = minissue;				// update time of last issue
 		    return execute();
 		}
@@ -225,7 +227,7 @@ namespace pipelined
 		}
 		units::unit& unit() { return units::FXU; }
 		void targetready(u64 cycle) { GPR[_RT].ready() = cycle; }
-		u64 ready() { return max(GPR[_RA].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(GPR[_RA].ready()); }
 	};
 
 	class cmpi : public operation
@@ -246,7 +248,7 @@ namespace pipelined
 		}	
 		units::unit& unit() { return units::FXU; }
 		void targetready(u64 cycle) { }
-		u64 ready() { return max(GPR[_RA].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(GPR[_RA].ready()); }
 	};
 
 	class lbz : public operation
@@ -254,18 +256,19 @@ namespace pipelined
 	    private:
 		gprnum	_RT;
 		gprnum	_RA;
+		u32	_latency;
 	    public:
-		lbz(gprnum RT, gprnum RA) { _RT = RT; _RA = RA; }
+		lbz(gprnum RT, gprnum RA) { _RT = RT; _RA = RA; _latency = 0; }
 		bool execute() 
 		{ 
 		    u32 EA = GPR[_RA].data(); 
 		    GPR[_RT].data() = MEM[EA];
 		    return false; 
 		}
-		u32 latency() { u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
+		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::LDU; }
 		void targetready(u64 cycle) { GPR[_RT].ready() = cycle; }
-		u64 ready() { return max(GPR[_RA].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(GPR[_RA].ready()); }
 	};
 
 	class stb : public operation
@@ -273,8 +276,9 @@ namespace pipelined
 	    private:
 		gprnum	_RS;
 		gprnum	_RA;
+		u32	_latency;
 	    public:
-		stb(gprnum RS, gprnum RA) { _RS = RS; _RA = RA; }
+		stb(gprnum RS, gprnum RA) { _RS = RS; _RA = RA; _latency = 0; }
 		bool execute() 
 		{
 		    uint32_t EA = GPR[_RA].data();
@@ -282,10 +286,10 @@ namespace pipelined
 
 		    return false; 
 		}
-		u32 latency() { u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
+		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::STU; }
 		void targetready(u64 cycle) { }
-		u64 ready() { return max(GPR[_RA].ready(), GPR[_RS].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(GPR[_RA].ready(), GPR[_RS].ready()); }
 	};
 
 	class lfd : public operation
@@ -293,18 +297,19 @@ namespace pipelined
 	    private:
 		fprnum	_FT;
 		gprnum	_RA;
+		u32	_latency;
 	    public:
-		lfd(fprnum FT, gprnum RA) { _FT = FT; _RA = RA; }
+		lfd(fprnum FT, gprnum RA) { _FT = FT; _RA = RA; _latency = 0; }
 		bool execute()
 		{
 		    u32 EA = GPR[_RA].data();
 		    FPR[_FT].data() = *((double*)(MEM.data() + EA));
 		    return false;
 		}
-		u32 latency() {  u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
+		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::LDU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
-		u64 ready() { return max(GPR[_RA].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(GPR[_RA].ready()); }
 	};
 
 	class stfd : public operation
@@ -312,18 +317,19 @@ namespace pipelined
 	    private:
 		fprnum _FS;
 		gprnum _RA;
+		u32	_latency;
 	    public:
-		stfd(fprnum FS, gprnum RA) { _FS = FS; _RA = RA; }
+		stfd(fprnum FS, gprnum RA) { _FS = FS; _RA = RA; _latency = 0; }
 		bool execute()
 		{
 		    u32 EA = GPR[_RA].data();
 		    *((double*)(MEM.data() + EA)) = FPR[_FS].data();
 		    return false;
 		}
-		u32 latency() {  u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
+		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::STU; }
 		void targetready(u64 cycle) { }
-		u64 ready() { return max(GPR[_RA].ready(), FPR[_FS].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(GPR[_RA].ready(), FPR[_FS].ready()); }
 	};
 
 	class b : public operation
@@ -373,7 +379,7 @@ namespace pipelined
 		bool execute() { FPR[_FT].data() = FPR[_FA].data() * FPR[_FB].data(); return false; }
 		units::unit& unit() { return units::FPU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
-		u64 ready() { return max(FPR[_FA].ready(), FPR[_FB].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(FPR[_FA].ready(), FPR[_FB].ready()); }
 	};
 
 	class fadd : public operation
@@ -387,7 +393,7 @@ namespace pipelined
 		bool execute() { FPR[_FT].data() = FPR[_FA].data() + FPR[_FB].data(); return false; }
 		units::unit& unit() { return units::FPU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
-		u64 ready() { return max(FPR[_FA].ready(), FPR[_FB].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(FPR[_FA].ready(), FPR[_FB].ready()); }
 	};
     };
 
