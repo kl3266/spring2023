@@ -5,6 +5,7 @@
 #include<stdint.h>
 #include<assert.h>
 #include<vector>
+#include<set>
 #include<algorithm>
 
 namespace pipelined
@@ -186,6 +187,8 @@ namespace pipelined
 
     namespace operations
     {
+	extern std::set<u64>	issued;
+
 	class operation
 	{
 	    public:
@@ -200,7 +203,8 @@ namespace pipelined
 		    counters::operations++;					// increment operation count
 		    u64 minissue = ready();					// inputs ready
 		    minissue = max(minissue, unit().ready());			// and functional unit ready
-		    minissue = max(minissue, counters::lastissued + 1);		// and after last issue
+		    while (issued.count(minissue)) minissue++;			// only one issue per cycle
+		    issued.insert(minissue);					// mark issue on this cycle
 		    u64 cycle = counters::cycles;				// current cycle count
 		    counters::cycles = std::max(cycle, minissue + latency()); 	// current cycle could advance to the end of this operation
 		    unit().ready() = minissue + throughput();			// unit will be ready again after inverse throughput cycles

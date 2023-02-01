@@ -21,6 +21,8 @@ namespace pipelined
     units::unit			units::FPU;
     units::unit			units::BRU;
 
+    std::set<u64>		operations::issued;
+
     namespace caches
     {
         cache   L1(params::L1::nsets, params::L1::nways, params::L1::linesize);
@@ -154,6 +156,7 @@ namespace pipelined
 	units::LDU.ready() = 0;
 	units::STU.ready() = 0;
 	units::BRU.ready() = 0;
+	operations::issued.clear();
     }
 
     namespace operations
