@@ -36,8 +36,9 @@ int main
 	simple::caches::L1.clear();
 	simple::mxv(0,0,0,0,0);
 	
-	printf("M = %6d, N = %6d : instructions = %6lu, cycles = %8lu, L1 accesses= %6lu, L1 misses = %6lu :",
-		M, N, simple::instructions, simple::cycles, simple::counters::L1::accesses, simple::counters::L1::misses);
+	double flops = (double)2*M*N/(double)simple::cycles;
+	printf("M = %6d, N = %6d : instructions = %6lu, cycles = %8lu, flops/cyc = %10.6f, L1 accesses= %6lu, L1 misses = %6lu :",
+		M, N, simple::instructions, simple::cycles, flops, simple::counters::L1::accesses, simple::counters::L1::misses);
 	bool pass = true;
 	for (uint32_t i=0; i<M; i++)
 	{
