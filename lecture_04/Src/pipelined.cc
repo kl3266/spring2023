@@ -160,4 +160,9 @@ namespace pipelined
     {
 	bool process(operation* op) { return op->process(); } 
     };
+
+    namespace instructions
+    {
+	bool process(instruction* inst) { return inst->process(); }
+    };
 };
