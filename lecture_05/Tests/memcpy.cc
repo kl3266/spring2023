@@ -25,6 +25,7 @@ int main
 
 	double rate = (double)pipelined::counters::cycles/(double)n;
 	
+	if (pipelined::tracing) printf("\n");
 	printf("n = %6d : instructions = %6lu, cycles = %6lu, L1 accesses= %6lu, L1 hits = %6lu",
 		n, pipelined::counters::operations, pipelined::counters::cycles, pipelined::counters::L1::accesses, pipelined::counters::L1::hits);
 	printf(", cyc/B = %10.2f", rate);

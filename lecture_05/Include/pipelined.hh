@@ -7,6 +7,9 @@
 #include<vector>
 #include<set>
 #include<algorithm>
+#include<iostream>
+#include<iomanip>
+#include<string>
 
 namespace pipelined
 {
@@ -18,6 +21,8 @@ namespace pipelined
 
     typedef float	fp32;
     typedef double	fp64;
+
+    extern bool tracing;
 
     namespace params
     {
@@ -123,12 +128,13 @@ namespace pipelined
 	class unit
 	{
 	    private:
-		u64	_ready;
+		std::set<u64>	_busy;
 
 	    public:
-		unit() 				{ _ready = 0; }
-	    	const u64& ready() const 	{ return _ready; }
-	    	u64& ready()			{ return _ready; }
+		unit() 					{ }
+		void clear()				{ _busy.clear(); }
+		const bool busy(u64 cycle) const	{ return _busy.count(cycle); }
+		void claim(u64 cycle) 			{ _busy.insert(cycle); }
 	};
 
 	extern unit	LDU;	// load unit
@@ -191,6 +197,10 @@ namespace pipelined
 
 	class operation
 	{
+	    private:
+		u64	_count;		// opearation #
+		u64	_issue;		// issue time
+		u64	_complete;	// completion time
 	    public:
 		virtual bool 		execute() = 0;				// operation semantics
 		virtual units::unit& 	unit() = 0;				// functional unit for this operation
@@ -198,18 +208,47 @@ namespace pipelined
 		virtual u32  		latency() 	{ return 1; }		// operation latency
 		virtual u32  		throughput() 	{ return 1; }		// operation throughput
 		virtual u64	 	ready() = 0;				// time inputs are ready
+		virtual std::string	dasm()		{ return " "; }
+		void output(std::ostream& out)
+		{
+		    std::ios state(nullptr);
+
+		    state.copyfmt(out);
+		    out << std::endl;
+		    out << std::setw( 6) << std::setfill('0') << _count     << " : ";
+		    out << std::setw(20) << std::setfill(' ') << dasm()     << " : ";
+		    out << std::setw( 6) << std::setfill('0') << _issue     << " , ";
+		    out << std::setw( 6) << std::setfill('0') << _complete;
+		    out.copyfmt(state);
+		}
 		virtual bool 		process()				// process this operation
 		{
+		    _count = counters::operations;
 		    counters::operations++;					// increment operation count
 		    u64 minissue = ready();					// inputs ready
-		    minissue = max(minissue, unit().ready());			// and functional unit ready
-		    while (issued.count(minissue)) minissue++;			// only one issue per cycle
+		    bool issuable = false;					// look for earliest issue possible
+		    while (!issuable)
+		    {
+			issuable = true;
+			if (issued.count(minissue)) issuable = false;		// only one issue per cycle
+			for (int i=0; i<throughput(); i++)			// test the next "inverse throughput" cycles
+			{
+			    if (unit().busy(minissue + i)) issuable = false;	// if any of them busy, cannot issue
+			}
+			if (!issuable) minissue++;
+		    }
+		    _issue = minissue;
 		    issued.insert(minissue);					// mark issue on this cycle
+		    for (int i=0; i<throughput(); i++)				// mark the unit busy for the next "inverse throughput" cycles
+		    {
+			unit().claim(minissue + i);
+		    }
 		    u64 cycle = counters::cycles;				// current cycle count
 		    counters::cycles = std::max(cycle, minissue + latency()); 	// current cycle could advance to the end of this operation
-		    unit().ready() = minissue + throughput();			// unit will be ready again after inverse throughput cycles
 		    targetready(minissue + latency());				// update ready time for output register
+		    _complete = minissue + latency();
 		    counters::lastissued = minissue;				// update time of last issue
+		    if (tracing) output(std::cout);
 		    return execute();
 		}
 	};
@@ -232,6 +271,7 @@ namespace pipelined
 		units::unit& unit() { return units::FXU; }
 		void targetready(u64 cycle) { GPR[_RT].ready() = cycle; }
 		u64 ready() { return max(GPR[_RA].ready()); }
+		std::string dasm() { std::string str = "addi (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
 
 	class cmpi : public operation
@@ -253,6 +293,7 @@ namespace pipelined
 		units::unit& unit() { return units::FXU; }
 		void targetready(u64 cycle) { }
 		u64 ready() { return max(GPR[_RA].ready()); }
+		std::string dasm() { std::string str = "cmpi (r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
 
 	class lbz : public operation
@@ -273,6 +314,7 @@ namespace pipelined
 		units::unit& unit() { return units::LDU; }
 		void targetready(u64 cycle) { GPR[_RT].ready() = cycle; }
 		u64 ready() { return max(GPR[_RA].ready()); }
+		std::string dasm() { std::string str = "lbz (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
 
 	class stb : public operation
@@ -294,6 +336,7 @@ namespace pipelined
 		units::unit& unit() { return units::STU; }
 		void targetready(u64 cycle) { }
 		u64 ready() { return max(GPR[_RA].ready(), GPR[_RS].ready()); }
+		std::string dasm() { std::string str = "stb (r" + std::to_string(_RS) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
 
 	class lfd : public operation
@@ -314,6 +357,7 @@ namespace pipelined
 		units::unit& unit() { return units::LDU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
 		u64 ready() { return max(GPR[_RA].ready()); }
+		std::string dasm() { std::string str = "lfd (f" + std::to_string(_FT) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
 
 	class stfd : public operation
@@ -334,6 +378,7 @@ namespace pipelined
 		units::unit& unit() { return units::STU; }
 		void targetready(u64 cycle) { }
 		u64 ready() { return max(GPR[_RA].ready(), FPR[_FS].ready()); }
+		std::string dasm() { std::string str = "stfd (f" + std::to_string(_FS) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
 
 	class b : public operation
@@ -346,6 +391,7 @@ namespace pipelined
 		units::unit& unit() { return units::BRU; }
 		void targetready(u64 cycle) { }
 		u64 ready() { return 0; }
+		std::string dasm() { std::string str = "b (" + std::to_string(_BD) + ")"; return str; }
 	};
 
 	class beq : public operation
@@ -358,6 +404,7 @@ namespace pipelined
 		units::unit& unit() { return units::BRU; }
 		void targetready(u64 cycle) { }
 		u64 ready() { return 0; }
+		std::string dasm() { std::string str = "beq (" + std::to_string(_BD) + ")"; return str; }
 	};
 
 	class zd : public operation
@@ -370,6 +417,7 @@ namespace pipelined
 		units::unit& unit() { return units::FPU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
 		u64 ready() { return 0; }
+		std::string dasm() { std::string str = "zd (f" + std::to_string(_FT) + ")"; return str; }
 	};
 
 	class fmul : public operation
@@ -384,6 +432,7 @@ namespace pipelined
 		units::unit& unit() { return units::FPU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
 		u64 ready() { return max(FPR[_FA].ready(), FPR[_FB].ready()); }
+		std::string dasm() { std::string str = "fmul (f" + std::to_string(_FT) + ", f" + std::to_string(_FA) + ", f" + std::to_string(_FB) + ")"; return str; }
 	};
 
 	class fadd : public operation
@@ -398,6 +447,7 @@ namespace pipelined
 		units::unit& unit() { return units::FPU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
 		u64 ready() { return max(FPR[_FA].ready(), FPR[_FB].ready()); }
+		std::string dasm() { std::string str = "fadd (f" + std::to_string(_FT) + ", f" + std::to_string(_FA) + ", f" + std::to_string(_FB) + ")"; return str; }
 	};
     };
 

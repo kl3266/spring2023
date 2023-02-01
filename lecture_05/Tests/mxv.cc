@@ -38,6 +38,7 @@ int main
 	pipelined::caches::L1.clear();
 	pipelined::mxv(0,0,0,0,0);
 	
+	if (pipelined::tracing) printf("\n");
 	printf("M = %6d, N = %6d : instructions = %6lu, cycles = %8lu, L1 accesses= %6lu, L1 misses = %6lu :",
 		M, N, pipelined::counters::operations, pipelined::counters::cycles, pipelined::counters::L1::accesses, pipelined::counters::L1::misses);
 	bool pass = true;

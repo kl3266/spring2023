@@ -2,6 +2,8 @@
 
 namespace pipelined
 {
+    bool	tracing = true;
+
     const u32	params::MEM::N = 65536;
     const u32 	params::MEM::latency = 300;
     const u32 	params::L1::latency = 2;
@@ -151,11 +153,11 @@ namespace pipelined
         counters::L1::misses = 0;
 	for (uint32_t i=0; i<params::GPR::N; i++) GPR[i].ready() = 0;
 	for (uint32_t i=0; i<params::FPR::N; i++) FPR[i].ready() = 0;
-	units::FXU.ready() = 0;
-	units::FPU.ready() = 0;
-	units::LDU.ready() = 0;
-	units::STU.ready() = 0;
-	units::BRU.ready() = 0;
+	units::FXU.clear();
+	units::FPU.clear();
+	units::LDU.clear();
+	units::STU.clear();
+	units::BRU.clear();
 	operations::issued.clear();
     }
 
