@@ -199,7 +199,7 @@ namespace pipelined
 		{
 		    counters::operations++;					// increment operation count
 		    u64 minissue = ready();					// inputs ready
-		    minissue = max(minissue, unit().ready()) + 1;		// and functional unit ready
+		    minissue = max(minissue, unit().ready());			// and functional unit ready
 		    minissue = max(minissue, counters::lastissued + 1);		// and after last issue
 		    u64 cycle = counters::cycles;				// current cycle count
 		    counters::cycles = std::max(cycle, minissue + latency()); 	// current cycle could advance to the end of this operation

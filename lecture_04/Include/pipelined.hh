@@ -225,7 +225,7 @@ namespace pipelined
 		}
 		units::unit& unit() { return units::FXU; }
 		void targetready(u64 cycle) { GPR[_RT].ready() = cycle; }
-		u64 ready() { return max(GPR[_RA].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(GPR[_RA].ready(), unit().ready()); }
 	};
 
 	class cmpi : public operation
@@ -246,7 +246,7 @@ namespace pipelined
 		}	
 		units::unit& unit() { return units::FXU; }
 		void targetready(u64 cycle) { }
-		u64 ready() { return max(GPR[_RA].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(GPR[_RA].ready(), unit().ready()); }
 	};
 
 	class lbz : public operation
@@ -265,7 +265,7 @@ namespace pipelined
 		u32 latency() { u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 		units::unit& unit() { return units::LDU; }
 		void targetready(u64 cycle) { GPR[_RT].ready() = cycle; }
-		u64 ready() { return max(GPR[_RA].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(GPR[_RA].ready(), unit().ready()); }
 	};
 
 	class stb : public operation
@@ -285,7 +285,7 @@ namespace pipelined
 		u32 latency() { u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 		units::unit& unit() { return units::STU; }
 		void targetready(u64 cycle) { }
-		u64 ready() { return max(GPR[_RA].ready(), GPR[_RS].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(GPR[_RA].ready(), GPR[_RS].ready(), unit().ready()); }
 	};
 
 	class lfd : public operation
@@ -304,7 +304,7 @@ namespace pipelined
 		u32 latency() {  u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 		units::unit& unit() { return units::LDU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
-		u64 ready() { return max(GPR[_RA].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(GPR[_RA].ready(), unit().ready()); }
 	};
 
 	class stfd : public operation
@@ -323,7 +323,7 @@ namespace pipelined
 		u32 latency() {  u32 EA = GPR[_RA].data(); return caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; }
 		units::unit& unit() { return units::STU; }
 		void targetready(u64 cycle) { }
-		u64 ready() { return max(GPR[_RA].ready(), FPR[_FS].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(GPR[_RA].ready(), FPR[_FS].ready(), unit().ready()); }
 	};
 
 	class b : public operation
@@ -373,7 +373,7 @@ namespace pipelined
 		bool execute() { FPR[_FT].data() = FPR[_FA].data() * FPR[_FB].data(); return false; }
 		units::unit& unit() { return units::FPU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
-		u64 ready() { return max(FPR[_FA].ready(), FPR[_FB].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(FPR[_FA].ready(), FPR[_FB].ready(), unit().ready()); }
 	};
 
 	class fadd : public operation
@@ -387,7 +387,7 @@ namespace pipelined
 		bool execute() { FPR[_FT].data() = FPR[_FA].data() + FPR[_FB].data(); return false; }
 		units::unit& unit() { return units::FPU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
-		u64 ready() { return max(FPR[_FA].ready(), FPR[_FB].ready(), unit().ready()) + 1; }
+		u64 ready() { return max(FPR[_FA].ready(), FPR[_FB].ready(), unit().ready()); }
 	};
     };
 
