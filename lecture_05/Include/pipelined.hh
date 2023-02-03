@@ -57,13 +57,6 @@ namespace pipelined
 	extern u64	operations;
 	extern u64	cycles;
 	extern u64	lastissued;
-
-	namespace L1
-	{
-	    extern u64	hits;
-	    extern u64	misses;
-	    extern u64	accesses;
-	};
     };
 
     typedef enum
@@ -152,6 +145,10 @@ namespace pipelined
                 bool            valid;          // is entry valid?
                 uint32_t        addr;           // address of this entry
                 uint64_t        touched;        // last time this entry was used
+		std::vector<u8>	data;		// data in this entry
+
+		entry(u32 linesize) : data(linesize) { }	// creates a cache entry with linesize bytes of storage
+		entry()	{ }					// default constructor, to be filled later
         };
 
         typedef std::vector<entry>      set;
@@ -166,15 +163,22 @@ namespace pipelined
                 array           _sets;
 
             public:
-                cache(uint32_t nsets, uint32_t nways, uint32_t linesize);
+		u64		accesses;					// counter of number of accesses
+		u64		misses;						// counter of number of misses
+		u64		hits;						// counter of number of hits
 
-                uint32_t        nsets() const;          // number of sets
-                uint32_t        nways() const;          // number of ways
-                uint32_t        linesize() const;       // in bytes
-                uint32_t        capacity() const;       // in bytes
-                array&          sets();                 // cache array
-                bool            hit(uint32_t);          // tests for address hit in cache
-                void            clear();                // clear the cache
+                cache(uint32_t nsets, uint32_t nways, uint32_t linesize);	// construct a cache of size nsets x nways x linesize bytes
+
+                uint32_t        nsets() const;       			   	// number of sets
+                uint32_t        nways() const;          			// number of ways
+                uint32_t        linesize() const;    			   	// in bytes
+                uint32_t        capacity() const;     			  	// in bytes
+                array&          sets();                			 	// cache array
+                bool            hit(u32 EA);	        			// tests for address EA hit in cache
+		bool		contains(u32 EA, u32 L);			// tests if cache contains data in address range [EA, EA+L)
+		bool		contains(u32 WA, u32 L, u32 &set, u32 &way);	// returns the set and way that contain the data (if true)
+		u8*		fill(u32 EA, u32 L);				// loads data in address range [EA, EA+L) into cache, returns a pointer to the data in cache
+                void            clear();                			// clear the cache
         };
 
         extern cache L1;
@@ -306,11 +310,12 @@ namespace pipelined
 		lbz(gprnum RT, gprnum RA) { _RT = RT; _RA = RA; _latency = 0; }
 		bool execute() 
 		{ 
-		    u32 EA = GPR[_RA].data(); 
-		    GPR[_RT].data() = MEM[EA];
+		    u32 EA = GPR[_RA].data(); 			// compute effective address of load
+		    u8* data = caches::L1.fill(EA, 1);		// fill the cache with the line, if not already there
+		    GPR[_RT].data() = *((u8*)data);		// get data from the cache
 		    return false; 
 		}
-		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; return _latency; }
+		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.contains(EA,1) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::LDU; }
 		void targetready(u64 cycle) { GPR[_RT].ready() = cycle; }
 		u64 ready() { return max(GPR[_RA].ready()); }
@@ -327,12 +332,13 @@ namespace pipelined
 		stb(gprnum RS, gprnum RA) { _RS = RS; _RA = RA; _latency = 0; }
 		bool execute() 
 		{
-		    uint32_t EA = GPR[_RA].data();
-                    MEM[EA] = GPR[_RS].data() & 0xff;
-
+		    uint32_t EA = GPR[_RA].data();		// compute effective address of store
+		    u8* data = caches::L1.fill(EA, 1);		// fill the cache with the line, if not already there
+		    *((u8*)data) = GPR[_RS].data() & 0xff;	// write data to cache
+                    MEM[EA] = GPR[_RS].data() & 0xff;		// write to memory as well, since L1 is write-through!
 		    return false; 
 		}
-		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; return _latency; }
+		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.contains(EA,1) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::STU; }
 		void targetready(u64 cycle) { }
 		u64 ready() { return max(GPR[_RA].ready(), GPR[_RS].ready()); }
@@ -349,11 +355,12 @@ namespace pipelined
 		lfd(fprnum FT, gprnum RA) { _FT = FT; _RA = RA; _latency = 0; }
 		bool execute()
 		{
-		    u32 EA = GPR[_RA].data();
-		    FPR[_FT].data() = *((double*)(MEM.data() + EA));
+		    u32 EA = GPR[_RA].data();			// compute effective address of load
+		    u8* data = caches::L1.fill(EA, 8);		// fill the cache with the line, if not already there
+		    FPR[_FT].data() = *((double*)data);		// get data from the cache
 		    return false;
 		}
-		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; return _latency; }
+		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.contains(EA,8) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::LDU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
 		u64 ready() { return max(GPR[_RA].ready()); }
@@ -370,11 +377,13 @@ namespace pipelined
 		stfd(fprnum FS, gprnum RA) { _FS = FS; _RA = RA; _latency = 0; }
 		bool execute()
 		{
-		    u32 EA = GPR[_RA].data();
-		    *((double*)(MEM.data() + EA)) = FPR[_FS].data();
+		    u32 EA = GPR[_RA].data();				// compute effective address of store
+		    u8* data = caches::L1.fill(EA, 8);			// fill the cache with the line, if not already there
+		    *((double*)(MEM.data() + EA)) = FPR[_FS].data();	// write data to cache
+		    *((double*)data) = FPR[_FS].data();			// write to memory as well, since L1 is write-through!
 		    return false;
 		}
-		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.hit(EA) ? params::L1::latency : params::MEM::latency; return _latency; }
+		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.contains(EA,8) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::STU; }
 		void targetready(u64 cycle) { }
 		u64 ready() { return max(GPR[_RA].ready(), FPR[_FS].ready()); }

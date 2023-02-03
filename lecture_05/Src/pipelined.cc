@@ -2,7 +2,7 @@
 
 namespace pipelined
 {
-    bool	tracing = true;
+    bool	tracing = false;
 
     const u32	params::MEM::N = 65536;
     const u32 	params::MEM::latency = 300;
@@ -35,13 +35,21 @@ namespace pipelined
             _nways = nways;
             _linesize = linesize;
 
-            entry empty; empty.valid = false; empty.touched = 0;
+	    accesses = 0;
+	    hits = 0;
+	    misses = 0;
+
+            entry empty(linesize); empty.valid = false; empty.touched = 0;
             set   init(nways); for (uint32_t i=0; i<nways; i++) init[i] = empty;
             for (uint32_t i=0; i<nsets; i++) _sets[i] = init;
         }
 
         void cache::clear()
         {
+	    accesses = 0;
+	    hits = 0;
+	    misses = 0;
+
             for (uint32_t setix=0; setix<nsets(); setix++)
                 for (uint32_t wayix=0; wayix<nways(); wayix++)
                 {
@@ -78,7 +86,7 @@ namespace pipelined
 
         bool cache::hit(uint32_t addr)
         {
-            counters::L1::accesses++;
+            accesses++;
             uint32_t lineaddr = addr / linesize();
             uint32_t setix = lineaddr % nsets();
             uint32_t wayix;
@@ -89,14 +97,14 @@ namespace pipelined
             if      (wayix < nways())
             {
                 // L1 cache hit
-                counters::L1::hits++;
+                hits++;
                 sets()[setix][wayix].touched = counters::cycles;
                 return true;
             }
             else
             {
                 // L1 cache miss
-                counters::L1::misses++;
+                misses++;
                 // find the LRU entry
                 uint64_t lasttouch = counters::cycles;
                 uint32_t lru = nways();
@@ -122,6 +130,67 @@ namespace pipelined
                 return false;
             }
         }
+
+	bool 	cache::contains(u32 EA, u32 L, u32 &setix, u32 &wayix)
+	{
+	    u32	lineaddr = EA / linesize();			// compute line address of first byte
+	    assert(lineaddr == ((EA+L-1) / linesize())); 	// assert that last byte is in the same line
+            setix = lineaddr % nsets();				// compute set index from line address
+            for (wayix = 0; wayix < nways(); wayix++)		// look for address in one of the ways of the set
+            {
+                if (sets()[setix][wayix].valid && (sets()[setix][wayix].addr == lineaddr)) break;
+            }
+            return (wayix < nways());
+	}
+
+	bool 	cache::contains(u32 EA, u32 L)
+	{
+	    u32 setix; u32 wayix;
+	    return contains(EA, L, setix, wayix);
+	}
+
+	u8*	cache::fill(u32 EA, u32 L)
+	{
+	    accesses++;
+	    u32 setix; u32 wayix; u32 offset = EA % linesize(); u32 lineaddr = EA / linesize();
+	    if (contains(EA, L, setix, wayix))
+	    {
+		// This is a hit! just return the contents at the offset
+		hits++;
+		sets()[setix][wayix].touched = counters::cycles;
+		return sets()[setix][wayix].data.data() + offset;
+	    }
+	    else
+	    {
+	    	// This is a miss! We need to allocate an entry and bring data from memory
+		misses++;
+                // find the LRU entry
+                u64 lasttouch = counters::cycles;
+                u32 lru = nways();
+                for (wayix = 0; wayix < nways(); wayix++)
+                {
+                    if (!sets()[setix][wayix].valid)
+                    {
+                        // invalid entry, can use this one as the lru
+                        lru = wayix;
+                        break;
+                    }
+                    if (sets()[setix][wayix].touched <= lasttouch)
+                    {
+                        // older than current candidate - update
+                        lru = wayix;
+                        lasttouch = sets()[setix][wayix].touched;
+                    }
+                }
+                assert(lru < nways());
+                sets()[setix][lru].valid = true;					// entry is now valid
+                sets()[setix][lru].addr = lineaddr;					// it has this line address
+                sets()[setix][lru].touched = counters::cycles;				// it was just touched
+		for (u32 i=0; i<linesize(); i++) 
+		    sets()[setix][lru].data[i] = MEM[lineaddr * linesize() + i];	// fill the entry with L bytes from memory, starting at addrress EA
+		return sets()[setix][lru].data.data() + offset;				// return the contents
+	    }
+	}
     };
 
     flags_t     flags;                          // flags
@@ -133,9 +202,6 @@ namespace pipelined
     uint64_t    counters::operations = 0;       // operation counter
     uint64_t    counters::cycles = 0;           // cycle counter
     uint64_t    counters::lastissued = 0;       // last issue cycle
-    uint64_t    counters::L1::hits = 0;         // L1 hits
-    uint64_t    counters::L1::misses = 0;       // L1 misses
-    uint64_t    counters::L1::accesses = 0;     // L1 accesses
 
     void zeromem()
     {
@@ -148,9 +214,6 @@ namespace pipelined
 	counters::operations = 0;
 	counters::cycles = 0;
 	counters::lastissued = 0;
-        counters::L1::accesses = 0;
-        counters::L1::hits = 0;
-        counters::L1::misses = 0;
 	for (uint32_t i=0; i<params::GPR::N; i++) GPR[i].ready() = 0;
 	for (uint32_t i=0; i<params::FPR::N; i++) FPR[i].ready() = 0;
 	units::FXU.clear();
