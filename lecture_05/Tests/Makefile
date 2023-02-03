@@ -1,6 +1,6 @@
 TESTS 	= memcpy mxv
 CCC	= g++
-CCFLAGS	= -I../Include ../Src/pipelined.cc
+CCFLAGS	= -O3 -I../Include ../Src/pipelined.cc
 DEPS	= ../Include/pipelined.hh ../Src/pipelined.cc
 
 all:	${TESTS}
