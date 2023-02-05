@@ -49,6 +49,12 @@ namespace pipelined
 	    extern const u32	N;
 	    extern const u32	latency;
 	};
+
+	namespace Backend
+	{
+	    extern const u32	maxissue;	// maximum operations that can be issued per cycle
+	};
+
     };
 
     namespace counters
@@ -197,14 +203,17 @@ namespace pipelined
 
     namespace operations
     {
-	extern std::set<u64>	issued;
+	extern std::multiset<u64>	issued;
 
 	class operation
 	{
 	    private:
+		static bool	first;	// first instruction processed
+
 		u64	_count;		// opearation #
+		u64	_ready;		// inputs ready
 		u64	_issue;		// issue time
-		u64	_complete;	// completion time
+		u64	_complete;	// completion time (output ready)
 	    public:
 		virtual bool 		execute() = 0;				// operation semantics
 		virtual units::unit& 	unit() = 0;				// functional unit for this operation
@@ -215,29 +224,45 @@ namespace pipelined
 		virtual std::string	dasm()		{ return " "; }
 		void output(std::ostream& out)
 		{
-		    std::ios state(nullptr);
+		    if (first)
+		    {
+			out << "     op # ,            operation ,     ready ,    issued ,  complete" << std::endl;
+			first = false;
+		    }
 
+		    std::ios state(nullptr);
 		    state.copyfmt(out);
+		    out << std::setw( 9) << std::setfill('0') << _count     << " , ";
+		    out << std::setw(20) << std::setfill(' ') << dasm()     << " , ";
+		    out << std::setw( 9) << std::setfill('0') << _ready	    << " , ";
+		    out << std::setw( 9) << std::setfill('0') << _issue     << " , ";
+		    out << std::setw( 9) << std::setfill('0') << _complete;
 		    out << std::endl;
-		    out << std::setw( 6) << std::setfill('0') << _count     << " : ";
-		    out << std::setw(20) << std::setfill(' ') << dasm()     << " : ";
-		    out << std::setw( 6) << std::setfill('0') << _issue     << " , ";
-		    out << std::setw( 6) << std::setfill('0') << _complete;
 		    out.copyfmt(state);
 		}
 		virtual bool 		process()				// process this operation
 		{
 		    _count = counters::operations;
 		    counters::operations++;					// increment operation count
-		    u64 minissue = ready();					// inputs ready
+		    u64 minissue = ready(); _ready = minissue;			// inputs ready
 		    bool issuable = false;					// look for earliest issue possible
 		    while (!issuable)
 		    {
 			issuable = true;
-			if (issued.count(minissue)) issuable = false;		// only one issue per cycle
-			for (int i=0; i<throughput(); i++)			// test the next "inverse throughput" cycles
+			if (issued.count(minissue) < params::Backend::maxissue) // if there are still issue slots in this cycle
 			{
-			    if (unit().busy(minissue + i)) issuable = false;	// if any of them busy, cannot issue
+			    for (int i=0; i<throughput(); i++)			// test the next "inverse throughput" cycles
+			    {
+				if (unit().busy(minissue + i)) 			// if any of them busy, cannot issue
+				{
+				    issuable = false;
+				    break;
+				}
+			    }
+			}
+			else
+			{
+			    issuable = false;
 			}
 			if (!issuable) minissue++;
 		    }

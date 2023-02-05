@@ -3,6 +3,7 @@
 namespace pipelined
 {
     bool	tracing = false;
+    bool	operations::operation::first = true;
 
     const u32	params::MEM::N = 65536;
     const u32 	params::MEM::latency = 300;
@@ -12,6 +13,7 @@ namespace pipelined
     const u32	params::L1::linesize = 8;
     const u32	params::GPR::N = 16;
     const u32 	params::FPR::N = 8;
+    const u32	params::Backend::maxissue = 1;
 
     std::vector<u8>		MEM(params::MEM::N);
     std::vector<reg<u32>>	GPR(params::GPR::N);
@@ -23,7 +25,7 @@ namespace pipelined
     units::unit			units::FPU;
     units::unit			units::BRU;
 
-    std::set<u64>		operations::issued;
+    std::multiset<u64>		operations::issued;
 
     namespace caches
     {
