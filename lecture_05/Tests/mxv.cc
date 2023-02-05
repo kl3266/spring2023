@@ -13,7 +13,7 @@ int main
     printf("L1: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n", 
 	   pipelined::caches::L1.capacity(), pipelined::caches::L1.nsets(), pipelined::caches::L1.nways(), pipelined::caches::L1.linesize());
 
-    for (uint32_t m = 2; m <= 32; m *= 2) for (uint32_t n = m; n <= m*2; n *= 2)
+    for (uint32_t m = 2; m <= 32; m *= 2) for (uint32_t n = m/2; n <= m; n *= 2)
     {
 	pipelined::zeromem();
 
