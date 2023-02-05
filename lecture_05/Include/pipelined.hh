@@ -490,7 +490,7 @@ namespace pipelined
 	class instruction
 	{
 	    public:
-		virtual bool process() { }
+		virtual bool process() = 0;
 	};
 
 	bool process(instruction* instr);
