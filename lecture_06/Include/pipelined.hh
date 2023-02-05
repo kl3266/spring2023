@@ -139,6 +139,7 @@ namespace pipelined
 	    T& data() 			{ return *((T*)(&(PRF::R[_idx].data()))); }
 	    const u64& ready() const 	{ return PRF::R[_idx].ready(); }
 	    u64& ready()		{ return PRF::R[_idx].ready(); }
+	    u32	idx() const		{ return _idx; }
     };
 
     extern std::vector<u8>		MEM;
@@ -232,7 +233,7 @@ namespace pipelined
 	class operation
 	{
 	    private:
-		static bool	first;	// first instruction processed
+		static bool	first;	// first operation processed
 
 		u64	_count;		// opearation #
 		u64	_ready;		// inputs ready
@@ -245,12 +246,11 @@ namespace pipelined
 		virtual u32  		latency() 	{ return 1; }		// operation latency
 		virtual u32  		throughput() 	{ return 1; }		// operation throughput
 		virtual u64	 	ready() = 0;				// time inputs are ready
-		virtual std::string	dasm()		{ return " "; }
+		virtual std::string	dasm()  = 0;
 		void output(std::ostream& out)
 		{
 		    if (first)
 		    {
-			out << "     op # ,            operation ,     ready ,    issued ,  complete" << std::endl;
 			first = false;
 		    }
 
@@ -324,7 +324,7 @@ namespace pipelined
 		units::unit& unit() { return units::FXU; }
 		void targetready(u64 cycle) { GPR[_RT].ready() = cycle; }
 		u64 ready() { return max(GPR[_RA].ready()); }
-		std::string dasm() { std::string str = "addi (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
+		std::string dasm() { std::string str = "addi (p" + std::to_string(GPR[_RT].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
 
 	class cmpi : public operation
@@ -346,7 +346,7 @@ namespace pipelined
 		units::unit& unit() { return units::FXU; }
 		void targetready(u64 cycle) { }
 		u64 ready() { return max(GPR[_RA].ready()); }
-		std::string dasm() { std::string str = "cmpi (r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
+		std::string dasm() { std::string str = "cmpi (p" + std::to_string(GPR[_RA].idx()) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
 
 	class lbz : public operation
@@ -368,7 +368,7 @@ namespace pipelined
 		units::unit& unit() { return units::LDU; }
 		void targetready(u64 cycle) { GPR[_RT].ready() = cycle; }
 		u64 ready() { return max(GPR[_RA].ready()); }
-		std::string dasm() { std::string str = "lbz (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ")"; return str; }
+		std::string dasm() { std::string str = "lbz (p" + std::to_string(GPR[_RT].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
 	};
 
 	class stb : public operation
@@ -391,7 +391,7 @@ namespace pipelined
 		units::unit& unit() { return units::STU; }
 		void targetready(u64 cycle) { }
 		u64 ready() { return max(GPR[_RA].ready(), GPR[_RS].ready()); }
-		std::string dasm() { std::string str = "stb (r" + std::to_string(_RS) + ", r" + std::to_string(_RA) + ")"; return str; }
+		std::string dasm() { std::string str = "stb (p" + std::to_string(GPR[_RS].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
 	};
 
 	class lfd : public operation
@@ -413,7 +413,7 @@ namespace pipelined
 		units::unit& unit() { return units::LDU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
 		u64 ready() { return max(GPR[_RA].ready()); }
-		std::string dasm() { std::string str = "lfd (f" + std::to_string(_FT) + ", r" + std::to_string(_RA) + ")"; return str; }
+		std::string dasm() { std::string str = "lfd (p" + std::to_string(FPR[_FT].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
 	};
 
 	class stfd : public operation
@@ -436,7 +436,7 @@ namespace pipelined
 		units::unit& unit() { return units::STU; }
 		void targetready(u64 cycle) { }
 		u64 ready() { return max(GPR[_RA].ready(), FPR[_FS].ready()); }
-		std::string dasm() { std::string str = "stfd (f" + std::to_string(_FS) + ", r" + std::to_string(_RA) + ")"; return str; }
+		std::string dasm() { std::string str = "stfd (p" + std::to_string(FPR[_FS].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
 	};
 
 	class b : public operation
@@ -475,7 +475,7 @@ namespace pipelined
 		units::unit& unit() { return units::FPU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
 		u64 ready() { return 0; }
-		std::string dasm() { std::string str = "zd (f" + std::to_string(_FT) + ")"; return str; }
+		std::string dasm() { std::string str = "zd (p" + std::to_string(FPR[_FT].idx()) + ")"; return str; }
 	};
 
 	class fmul : public operation
@@ -490,7 +490,7 @@ namespace pipelined
 		units::unit& unit() { return units::FPU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
 		u64 ready() { return max(FPR[_FA].ready(), FPR[_FB].ready()); }
-		std::string dasm() { std::string str = "fmul (f" + std::to_string(_FT) + ", f" + std::to_string(_FA) + ", f" + std::to_string(_FB) + ")"; return str; }
+		std::string dasm() { std::string str = "fmul (p" + std::to_string(FPR[_FT].idx()) + ", p" + std::to_string(FPR[_FA].idx()) + ", p" + std::to_string(FPR[_FB].idx()) + ")"; return str; }
 	};
 
 	class fadd : public operation
@@ -505,7 +505,7 @@ namespace pipelined
 		units::unit& unit() { return units::FPU; }
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
 		u64 ready() { return max(FPR[_FA].ready(), FPR[_FB].ready()); }
-		std::string dasm() { std::string str = "fadd (f" + std::to_string(_FT) + ", f" + std::to_string(_FA) + ", f" + std::to_string(_FB) + ")"; return str; }
+		std::string dasm() { std::string str = "fadd (p" + std::to_string(FPR[_FT].idx()) + ", p" + std::to_string(FPR[_FA].idx()) + ", p" + std::to_string(FPR[_FB].idx()) + ")"; return str; }
 	};
     };
 
@@ -513,8 +513,30 @@ namespace pipelined
     {
 	class instruction
 	{
+	    private:
+		static bool	first;	// first instruction processed
+
+		u64		_count;	// instruction #
+
 	    public:
-		virtual bool process() = 0;
+		virtual bool 		process() = 0;
+		virtual std::string	dasm() = 0;
+		u64&	count()		{ return _count; }
+		const u64& count() const{ return _count; }
+		void output(std::ostream& out)
+		{
+		    if (first)
+		    {
+			out << "  instr # ,          instruction ,      op # ,            operation ,     ready ,    issued ,  complete" << std::endl;
+			first = false;
+		    }
+
+		    std::ios state(nullptr);
+		    state.copyfmt(out);
+		    out << std::setw( 9) << std::setfill('0') << _count     << " , ";
+		    out << std::setw(20) << std::setfill(' ') << dasm()     << " , ";
+		    out.copyfmt(state);
+		}
 	};
 
 	bool process(instruction* instr);
@@ -529,6 +551,7 @@ namespace pipelined
 		addi(gprnum RT, gprnum RA, i16 SI) { _RT = RT; _RA = RA; _SI = SI; }
 		bool process() { return operations::process(new operations::addi(_RT, _RA, _SI)); }
 		static bool execute(gprnum RT, gprnum RA, i16 SI) { return instructions::process(new addi(RT, RA, SI)); }
+		std::string dasm() { std::string str = "addi (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
 
 	class cmpi : public instruction
@@ -540,6 +563,7 @@ namespace pipelined
 		cmpi(gprnum RA, i16 SI) { _RA = RA; _SI = SI; }
 		bool process() { return operations::process(new operations::cmpi(_RA, _SI)); }
 		static bool execute(gprnum RA, i16 SI) { return instructions::process(new cmpi(RA, SI)); }
+		std::string dasm() { std::string str = "cmpi (r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
 
 	class lbz : public instruction
@@ -551,6 +575,7 @@ namespace pipelined
 		lbz(gprnum RT, gprnum RA) { _RT = RT; _RA = RA; }
 		bool process() { return operations::process(new operations::lbz(_RT, _RA)); }
 		static bool execute(gprnum RT, gprnum RA) { return instructions::process(new lbz(RT, RA)); }
+		std::string dasm() { std::string str = "lbz (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
 
 	class stb : public instruction
@@ -562,6 +587,7 @@ namespace pipelined
 		stb(gprnum RS, gprnum RA) { _RS = RS, _RA = RA; }
 		bool process() { return operations::process(new operations::stb(_RS, _RA)); }
 		static bool execute(gprnum RS, gprnum RA) { return instructions::process(new stb(RS, RA)); }
+		std::string dasm() { std::string str = "stb (r" + std::to_string(_RS) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
 
 	class beq : public instruction
@@ -572,6 +598,7 @@ namespace pipelined
 		beq(i16 BD) { _BD = BD; }
 		bool process() { return operations::process(new operations::beq(_BD)); }
 		static bool execute(i16 BD) { return instructions::process(new beq(BD)); }
+		std::string dasm() { std::string str = "beq (" + std::to_string(_BD) + ")"; return str; }
 	};
 
 	class b : public instruction
@@ -582,6 +609,7 @@ namespace pipelined
 		b(i16 BD) { _BD = BD; }
 		bool process() { return operations::process(new operations::b(_BD)); }
 		static bool execute(i16 BD) { return instructions::process(new b(BD)); }
+		std::string dasm() { std::string str = "b (" + std::to_string(_BD) + ")"; return str; }
 	};
 
 	class zd : public instruction
@@ -592,6 +620,7 @@ namespace pipelined
 		zd(fprnum FT) { _FT = FT; }
 		bool process() { return operations::process(new operations::zd(_FT)); }
 		static bool execute(fprnum FT) { return instructions::process(new zd(FT)); }
+		std::string dasm() { std::string str = "zd (f" + std::to_string(_FT) + ")"; return str; }
 	};
 
 	class fmul : public instruction
@@ -604,6 +633,7 @@ namespace pipelined
 		fmul(fprnum FT, fprnum FA, fprnum FB) { _FT = FT; _FA = FA; _FB = FB; }
 		bool process() { return operations::process(new operations::fmul(_FT, _FA, _FB)); }
 		static bool execute(fprnum FT, fprnum FA, fprnum FB) { return instructions::process(new fmul(FT, FA, FB)); }
+		std::string dasm() { std::string str = "fmul (f" + std::to_string(_FT) + ", f" + std::to_string(_FA) + ", f" + std::to_string(_FB) + ")"; return str; }
 	};
 
 
@@ -617,6 +647,7 @@ namespace pipelined
 		fadd(fprnum FT, fprnum FA, fprnum FB) { _FT = FT; _FA = FA; _FB = FB; }
 		bool process() { return operations::process(new operations::fadd(_FT, _FA, _FB)); }
 		static bool execute(fprnum FT, fprnum FA, fprnum FB) { return instructions::process(new fadd(FT, FA, FB)); }
+		std::string dasm() { std::string str = "fadd (f" + std::to_string(_FT) + ", f" + std::to_string(_FA) + ", f" + std::to_string(_FB) + ")"; return str; }
 	};
 
 	class lfd : public instruction
@@ -628,6 +659,7 @@ namespace pipelined
 		lfd(fprnum FT, gprnum RA) { _FT = FT; _RA = RA; }
 		bool process() { return operations::process(new operations::lfd(_FT, _RA)); }
 		static bool execute(fprnum FT, gprnum RA) { return instructions::process(new lfd(FT, RA)); }
+		std::string dasm() { std::string str = "lfd (f" + std::to_string(_FT) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
 
 	class stfd : public instruction
@@ -639,6 +671,7 @@ namespace pipelined
 		stfd(fprnum FS, gprnum RA) { _FS = FS; _RA = RA; }
 		bool process() { return operations::process(new operations::stfd(_FS, _RA)); }
 		static bool execute(fprnum FS, gprnum RA) { return instructions::process(new stfd(FS, RA)); }
+		std::string dasm() { std::string str = "stfd (f" + std::to_string(_FS) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
     };
 };

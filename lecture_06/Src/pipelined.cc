@@ -2,8 +2,9 @@
 
 namespace pipelined
 {
-    bool	tracing = false;
+    bool	tracing = true;
     bool	operations::operation::first = true;
+    bool	instructions::instruction::first = true;
 
     const u32	params::MEM::N = 65536;
     const u32 	params::MEM::latency = 300;
@@ -236,6 +237,12 @@ namespace pipelined
 
     namespace instructions
     {
-	bool process(instruction* inst) { return inst->process(); }
+	bool process(instruction* inst) 
+	{ 
+	    inst->count() = counters::instructions;
+	    counters::instructions++;
+	    if (tracing) inst->output(std::cout);
+	    return inst->process(); 
+	}
     };
 };
