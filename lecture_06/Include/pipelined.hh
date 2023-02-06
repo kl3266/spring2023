@@ -70,6 +70,11 @@ namespace pipelined
 	extern u64	lastissued;
     };
 
+    static u64 max(u64 a)			{ return a; }
+    static u64 max(u64 a, u64 b)		{ return a >= b ? a : b; }
+    static u64 max(u64 a, u64 b, u64 c) 	{ return max(a, max(b,c)); }
+    static u64 max(u64 a, u64 b, u64 c, u64 d)	{ return max(a, max(b, c, d)); }
+
     typedef enum
     {
         r0  =  0,
@@ -115,8 +120,9 @@ namespace pipelined
 	    T		_data;
 	    u64		_ready;
 	    bool	_busy;
+	    u64		_used;
 	public:
-	    preg() 			{ _data = 0; _ready = 0; _busy = false; }
+	    preg() 			{ _data = 0; _ready = 0; _busy = false; _used = 0; }
 	    const T& data() const 	{ return _data; }
 	    T& data() 			{ return _data;}
 	    const u64& ready() const 	{ return _ready; }
@@ -124,6 +130,9 @@ namespace pipelined
 	    size_t size() const		{ return sizeof(T); }
 	    bool& busy()		{ return _busy; }
 	    const bool& busy() const	{ return _busy; }
+	    u64& used()			{ return _used; }
+	    const u64& used() const	{ return _used; }
+	    void used(u64 cycle)	{ _used = max(_used, cycle); }
     };
 
     namespace PRF
@@ -144,6 +153,7 @@ namespace pipelined
 	    u64& ready()		{ return PRF::R[_idx].ready(); }
 	    const bool& busy() const 	{ return PRF::R[_idx].busy(); }
 	    bool& busy()		{ return PRF::R[_idx].busy(); }
+	    void used(u64 cycle)	{ return PRF::R[_idx].used(cycle); }
 	    const u32& idx() const	{ return _idx; }
 	    u32& idx()			{ return _idx; }
     };
@@ -227,11 +237,6 @@ namespace pipelined
     void zeromem();
     void zeroctrs();
 
-    static u64 max(u64 a)			{ return a; }
-    static u64 max(u64 a, u64 b)		{ return a >= b ? a : b; }
-    static u64 max(u64 a, u64 b, u64 c) 	{ return max(a, max(b,c)); }
-    static u64 max(u64 a, u64 b, u64 c, u64 d)	{ return max(a, max(b, c, d)); }
-
     namespace operations
     {
 	extern std::multiset<u64>	issued;
@@ -248,7 +253,7 @@ namespace pipelined
 	    public:
 		static	void 		zero() { first = true; }		// starting a new stream
 		virtual units::unit& 	unit() = 0;				// functional unit for this operation
-		virtual void 		target(u64 cycle) = 0;			// update ready time of output
+		virtual u64 		target(u64 cycle) = 0;			// update ready time of output
 		virtual u32  		latency() 	{ return 1; }		// operation latency
 		virtual u32  		throughput() 	{ return 1; }		// operation throughput
 		virtual u64	 	ready() = 0;				// time inputs are ready
@@ -276,6 +281,7 @@ namespace pipelined
 		    _count = counters::operations;
 		    counters::operations++;					// increment operation count
 		    u64 minissue = ready(); _ready = minissue;			// inputs ready
+		    minissue = target(minissue);				// save results and update ready time for output register
 		    bool issuable = false;					// look for earliest issue possible
 		    while (!issuable)
 		    {
@@ -305,7 +311,6 @@ namespace pipelined
 		    }
 		    u64 cycle = counters::cycles;				// current cycle count
 		    counters::cycles = std::max(cycle, minissue + latency()); 	// current cycle could advance to the end of this operation
-		    target(minissue + latency());				// save results and update ready time for output register
 		    _complete = minissue + latency();
 		    counters::lastissued = minissue;				// update time of last issue
 		    if (tracing) output(std::cout);
@@ -328,7 +333,7 @@ namespace pipelined
 		{ 
 		}
 		units::unit& unit() { return units::FXU; }
-		void target(u64 cycle) 
+		u64 target(u64 cycle) 
 		{ 
 		    GPR[_RT].busy() = false;
 		    do
@@ -337,9 +342,11 @@ namespace pipelined
 			_idx = PRF::next++; 
 		    } while (PRF::R[_idx].busy());
 		    PRF::R[_idx].busy() = true;
+		    return max(cycle, PRF::R[_idx].used());
 		}
 		bool issue(u64 cycle)
 		{
+		    GPR[_RA].used(cycle);
 		    u32 RES = GPR[_RA].data() + _SI; 
 		    GPR[_RT].idx()   = _idx; 
 		    GPR[_RT].data()  = RES;
@@ -359,6 +366,7 @@ namespace pipelined
 		cmpi(gprnum RA, i16 SI) { _RA = RA; _SI = SI; }
 		bool issue(u64 cycle) 
 		{
+		    GPR[_RA].used(cycle);
 		    flags.LT = false; flags.GT = false; flags.EQ = false;
 		    if      (GPR[_RA].data() < _SI) flags.LT = true;
         	    else if (GPR[_RA].data() > _SI) flags.GT = true;
@@ -366,7 +374,7 @@ namespace pipelined
 		    return false; 
 		}	
 		units::unit& unit() { return units::FXU; }
-		void target(u64 cycle) { }
+		u64 target(u64 cycle) { return cycle; }
 		u64 ready() { return max(GPR[_RA].ready()); }
 		std::string dasm() { std::string str = "cmpi (p" + std::to_string(GPR[_RA].idx()) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
@@ -382,7 +390,7 @@ namespace pipelined
 		lbz(gprnum RT, gprnum RA) { _RT = RT; _RA = RA; _latency = 0; }
 		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.contains(EA,1) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::LDU; }
-		void target(u64 cycle) 
+		u64 target(u64 cycle) 
 		{ 
 		    GPR[_RT].busy() = false;
 		    do
@@ -391,9 +399,11 @@ namespace pipelined
 			_idx = PRF::next++; 
 		    } while (PRF::R[_idx].busy());
 		    PRF::R[_idx].busy() = true;
+		    return max(cycle, PRF::R[_idx].used());
 		}
 		bool issue(u64 cycle)
 		{
+		    GPR[_RA].used(cycle);
 		    u32 EA = GPR[_RA].data(); 			// compute effective address of load
 		    u8* data = caches::L1.fill(EA, 1);		// fill the cache with the line, if not already there
 		    u32 RES = *((u8*)data);			// get data from the cache
@@ -416,6 +426,7 @@ namespace pipelined
 		stb(gprnum RS, gprnum RA) { _RS = RS; _RA = RA; _latency = 0; }
 		bool issue(u64 cycle) 
 		{
+		    GPR[_RA].used(cycle);
 		    uint32_t EA = GPR[_RA].data();		// compute effective address of store
 		    u8* data = caches::L1.fill(EA, 1);		// fill the cache with the line, if not already there
 		    *((u8*)data) = GPR[_RS].data() & 0xff;	// write data to cache
@@ -424,7 +435,7 @@ namespace pipelined
 		}
 		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.contains(EA,1) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::STU; }
-		void target(u64 cycle) { }
+		u64 target(u64 cycle) { return cycle; }
 		u64 ready() { return max(GPR[_RA].ready(), GPR[_RS].ready()); }
 		std::string dasm() { std::string str = "stb (p" + std::to_string(GPR[_RS].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
 	};
@@ -440,7 +451,7 @@ namespace pipelined
 		lfd(fprnum FT, gprnum RA) { _FT = FT; _RA = RA; _latency = 0; }
 		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.contains(EA,8) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::LDU; }
-		void target(u64 cycle) 
+		u64 target(u64 cycle) 
 		{ 
 		    FPR[_FT].busy() = false;
 		    do
@@ -449,9 +460,11 @@ namespace pipelined
 			_idx = PRF::next++; 
 		    } while (PRF::R[_idx].busy());
 		    PRF::R[_idx].busy() = true;
+		    return max(cycle, PRF::R[_idx].used());
 		}
 		bool issue(u64 cycle)
 		{
+		    GPR[_RA].used(cycle);
 		    u32 EA = GPR[_RA].data();			// compute effective address of load
 		    u8* data = caches::L1.fill(EA, 8);		// fill the cache with the line, if not already there
 		    double RES = *((double*)data);		// get data from the cache
@@ -474,6 +487,7 @@ namespace pipelined
 		stfd(fprnum FS, gprnum RA) { _FS = FS; _RA = RA; _latency = 0; }
 		bool issue(u64 cycle)
 		{
+		    GPR[_RA].used(cycle);
 		    u32 EA = GPR[_RA].data();				// compute effective address of store
 		    u8* data = caches::L1.fill(EA, 8);			// fill the cache with the line, if not already there
 		    *((double*)(MEM.data() + EA)) = FPR[_FS].data();	// write data to cache
@@ -482,7 +496,7 @@ namespace pipelined
 		}
 		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.contains(EA,8) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::STU; }
-		void target(u64 cycle) { }
+		u64 target(u64 cycle) { return cycle; }
 		u64 ready() { return max(GPR[_RA].ready(), FPR[_FS].ready()); }
 		std::string dasm() { std::string str = "stfd (p" + std::to_string(FPR[_FS].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
 	};
@@ -495,7 +509,7 @@ namespace pipelined
 		b(i16 BD) { _BD = BD; }
 		bool issue(u64 cycle) { NIA = CIA + _BD; return true; }
 		units::unit& unit() { return units::BRU; }
-		void target(u64 cycle) { }
+		u64 target(u64 cycle) { return cycle; }
 		u64 ready() { return 0; }
 		std::string dasm() { std::string str = "b (" + std::to_string(_BD) + ")"; return str; }
 	};
@@ -508,7 +522,7 @@ namespace pipelined
 		beq(i16 BD) { _BD = BD; }
 		bool issue(u64 cycle) { if (flags.EQ) { NIA = CIA + _BD; return true; } else return false; }
 		units::unit& unit() { return units::BRU; }
-		void target(u64 cycle) { }
+		u64 target(u64 cycle) { return cycle; }
 		u64 ready() { return 0; }
 		std::string dasm() { std::string str = "beq (" + std::to_string(_BD) + ")"; return str; }
 	};
@@ -521,7 +535,7 @@ namespace pipelined
 	    public:
 		zd(fprnum FT) { _FT = FT; }
 		units::unit& unit() { return units::FPU; }
-		void target(u64 cycle) 
+		u64 target(u64 cycle) 
 		{ 
 		    FPR[_FT].busy() = false;
 		    do
@@ -530,6 +544,7 @@ namespace pipelined
 			_idx = PRF::next++; 
 		    } while (PRF::R[_idx].busy());
 		    PRF::R[_idx].busy() = true;
+		    return max(cycle, PRF::R[_idx].used());
 		}
 		bool issue(u64 cycle)
 		{
@@ -552,7 +567,7 @@ namespace pipelined
 	    public:
 		fmul(fprnum FT, fprnum FA, fprnum FB) { _FT = FT; _FA = FA; _FB = FB; }
 		units::unit& unit() { return units::FPU; }
-		void target(u64 cycle) 
+		u64 target(u64 cycle) 
 		{ 
 		    FPR[_FT].busy() = false;
 		    do
@@ -561,9 +576,12 @@ namespace pipelined
 			_idx = PRF::next++; 
 		    } while (PRF::R[_idx].busy());
 		    PRF::R[_idx].busy() = true;
+		    return max(cycle, PRF::R[_idx].used());
 		}
 		bool issue(u64 cycle)
 		{
+		    FPR[_FA].used(cycle);
+		    FPR[_FB].used(cycle);
 		    double RES = FPR[_FA].data() * FPR[_FB].data(); 
 		    FPR[_FT].idx()   = _idx;
 		    FPR[_FT].data()  = RES;
@@ -587,7 +605,7 @@ namespace pipelined
 		{ 
 		}
 		units::unit& unit() { return units::FPU; }
-		void target(u64 cycle) 
+		u64 target(u64 cycle) 
 		{ 
 		    FPR[_FT].busy() = false;
 		    do
@@ -596,9 +614,12 @@ namespace pipelined
 			_idx = PRF::next++; 
 		    } while (PRF::R[_idx].busy());
 		    PRF::R[_idx].busy() = true;
+		    return max(cycle, PRF::R[_idx].used());
 		}
 		bool issue(u64 cycle)
 		{
+		    FPR[_FA].used(cycle);
+		    FPR[_FB].used(cycle);
 		    double RES = FPR[_FA].data() + FPR[_FB].data(); 
 		    FPR[_FT].idx()   = _idx;
 		    FPR[_FT].data()  = RES;

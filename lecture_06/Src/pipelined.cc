@@ -2,7 +2,7 @@
 
 namespace pipelined
 {
-    bool	tracing = false;
+    bool	tracing = true;
     bool	operations::operation::first = true;
     bool	instructions::instruction::first = true;
 
@@ -227,6 +227,7 @@ namespace pipelined
 	for (u32 i=0; i<params::FPR::N; i++) FPR[i].idx() = PRF::next++;
 	for (u32 i=0; i<params::PRF::N; i++) PRF::R[i].ready() = 0;
 	for (u32 i=0; i<params::PRF::N; i++) PRF::R[i].busy() = false;
+	for (u32 i=0; i<params::PRF::N; i++) PRF::R[i].used() = 0;
 	for (u32 i=0; i<params::GPR::N; i++) GPR[i].ready() = 0;
 	for (u32 i=0; i<params::GPR::N; i++) GPR[i].busy() = true;
 	for (u32 i=0; i<params::FPR::N; i++) FPR[i].ready() = 0;
