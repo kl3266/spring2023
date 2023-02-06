@@ -2,7 +2,7 @@
 
 namespace pipelined
 {
-    bool	tracing = true;
+    bool	tracing = false;
     bool	operations::operation::first = true;
     bool	instructions::instruction::first = true;
 
