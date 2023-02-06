@@ -31,6 +31,31 @@ namespace pipelined
 
     std::multiset<u64>		operations::issued;
 
+    namespace PRF
+    {
+	u32	find_next()
+	{
+	    return find_first();
+	}
+
+	u32	find_earliest()
+	{
+	    assert(false);
+	}
+
+	u32	find_first()
+	{
+	    u32 idx;
+	    do
+	    {
+		PRF::next %= params::PRF::N;
+		idx = PRF::next++;
+	    } while (PRF::R[idx].busy());
+	    PRF::R[idx].busy() = true;
+	    return idx;
+	}
+    };
+
     namespace caches
     {
         cache   L1(params::L1::nsets, params::L1::nways, params::L1::linesize);

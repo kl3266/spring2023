@@ -139,6 +139,10 @@ namespace pipelined
     {
 	extern std::vector<preg<u64>>	R;	// physical register file (for all registers)
 	extern u32			next;	// next physical register to use				
+
+	u32	find_first();
+	u32	find_earliest();
+	u32	find_next();
     };
 
     template<typename T> class reg		// an architected register
@@ -336,12 +340,7 @@ namespace pipelined
 		u64 target(u64 cycle) 
 		{ 
 		    GPR[_RT].busy() = false;
-		    do
-		    {
-			PRF::next %= params::PRF::N; 
-			_idx = PRF::next++; 
-		    } while (PRF::R[_idx].busy());
-		    PRF::R[_idx].busy() = true;
+		    _idx = PRF::find_next();
 		    return max(cycle, PRF::R[_idx].used());
 		}
 		bool issue(u64 cycle)
@@ -393,12 +392,7 @@ namespace pipelined
 		u64 target(u64 cycle) 
 		{ 
 		    GPR[_RT].busy() = false;
-		    do
-		    {
-			PRF::next %= params::PRF::N; 
-			_idx = PRF::next++; 
-		    } while (PRF::R[_idx].busy());
-		    PRF::R[_idx].busy() = true;
+		    _idx = PRF::find_next();
 		    return max(cycle, PRF::R[_idx].used());
 		}
 		bool issue(u64 cycle)
@@ -454,12 +448,7 @@ namespace pipelined
 		u64 target(u64 cycle) 
 		{ 
 		    FPR[_FT].busy() = false;
-		    do
-		    {
-			PRF::next %= params::PRF::N; 
-			_idx = PRF::next++; 
-		    } while (PRF::R[_idx].busy());
-		    PRF::R[_idx].busy() = true;
+		    _idx = PRF::find_next();
 		    return max(cycle, PRF::R[_idx].used());
 		}
 		bool issue(u64 cycle)
@@ -538,12 +527,7 @@ namespace pipelined
 		u64 target(u64 cycle) 
 		{ 
 		    FPR[_FT].busy() = false;
-		    do
-		    {
-			PRF::next %= params::PRF::N; 
-			_idx = PRF::next++; 
-		    } while (PRF::R[_idx].busy());
-		    PRF::R[_idx].busy() = true;
+		    _idx = PRF::find_next();
 		    return max(cycle, PRF::R[_idx].used());
 		}
 		bool issue(u64 cycle)
@@ -570,12 +554,7 @@ namespace pipelined
 		u64 target(u64 cycle) 
 		{ 
 		    FPR[_FT].busy() = false;
-		    do
-		    {
-			PRF::next %= params::PRF::N; 
-			_idx = PRF::next++; 
-		    } while (PRF::R[_idx].busy());
-		    PRF::R[_idx].busy() = true;
+		    _idx = PRF::find_next();
 		    return max(cycle, PRF::R[_idx].used());
 		}
 		bool issue(u64 cycle)
@@ -608,12 +587,7 @@ namespace pipelined
 		u64 target(u64 cycle) 
 		{ 
 		    FPR[_FT].busy() = false;
-		    do
-		    {
-			PRF::next %= params::PRF::N; 
-			_idx = PRF::next++; 
-		    } while (PRF::R[_idx].busy());
-		    PRF::R[_idx].busy() = true;
+		    _idx = PRF::find_next();
 		    return max(cycle, PRF::R[_idx].used());
 		}
 		bool issue(u64 cycle)
