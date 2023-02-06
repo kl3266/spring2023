@@ -35,12 +35,21 @@ namespace pipelined
     {
 	u32	find_next()
 	{
-	    return find_first();
+	    return find_earliest();
 	}
 
 	u32	find_earliest()
 	{
-	    assert(false);
+	    u32 idx;
+	    do						// find a first candidate
+	    {
+		PRF::next %= params::PRF::N;
+		idx = PRF::next++;
+	    } while (PRF::R[idx].busy());
+	    for (u32 i=0; i<params::PRF::N; i++)	// look for a possibly better candidate
+		if ((!(PRF::R[i].busy())) && (PRF::R[i].used() < PRF::R[idx].used())) idx = i;
+	    PRF::R[idx].busy() = true;
+	    return idx;
 	}
 
 	u32	find_first()
