@@ -333,9 +333,6 @@ namespace pipelined
 		u32	_idx;
 	    public:
 		addi(gprnum RT, gprnum RA, i16 SI) { _RT = RT; _RA = RA, _SI = SI; }
-		bool execute() 
-		{ 
-		}
 		units::unit& unit() { return units::FXU; }
 		u64 target(u64 cycle) 
 		{ 
@@ -580,9 +577,6 @@ namespace pipelined
 		u32	_idx;
 	    public:
 		fadd(fprnum FT, fprnum FA, fprnum FB) { _FT = FT; _FA = FA; _FB = FB; }
-		bool execute() 
-		{ 
-		}
 		units::unit& unit() { return units::FPU; }
 		u64 target(u64 cycle) 
 		{ 
