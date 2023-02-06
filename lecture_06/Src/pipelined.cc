@@ -216,12 +216,21 @@ namespace pipelined
 
     void zeroctrs()
     {
+    	operations::operation::zero();;
+    	instructions::instruction::zero();
 	counters::instructions = 0;
 	counters::operations = 0;
 	counters::cycles = 0;
 	counters::lastissued = 0;
-	for (uint32_t i=0; i<params::GPR::N; i++) GPR[i].ready() = 0;
-	for (uint32_t i=0; i<params::FPR::N; i++) FPR[i].ready() = 0;
+	PRF::next = 0;
+	for (u32 i=0; i<params::GPR::N; i++) GPR[i].idx() = PRF::next++;
+	for (u32 i=0; i<params::FPR::N; i++) FPR[i].idx() = PRF::next++;
+	for (u32 i=0; i<params::PRF::N; i++) PRF::R[i].ready() = 0;
+	for (u32 i=0; i<params::PRF::N; i++) PRF::R[i].busy() = false;
+	for (u32 i=0; i<params::GPR::N; i++) GPR[i].ready() = 0;
+	for (u32 i=0; i<params::GPR::N; i++) GPR[i].busy() = true;
+	for (u32 i=0; i<params::FPR::N; i++) FPR[i].ready() = 0;
+	for (u32 i=0; i<params::FPR::N; i++) FPR[i].busy() = true;
 	units::FXU.clear();
 	units::FPU.clear();
 	units::LDU.clear();
