@@ -15,12 +15,13 @@ int main
     for (uint32_t i=0; i<N; i++) pipelined::MEM[i] = rand() % 0xff;
     for (uint32_t n = 1; n<=N; n *= 2)
     {
+	pipelined::zeroctrs();
+	pipelined::caches::L1.clear();
+
 	pipelined::GPR[3].data() = 1024;
 	pipelined::GPR[4].data() = 0;
 	pipelined::GPR[5].data() = n;
 	
-	pipelined::zeroctrs();
-	pipelined::caches::L1.clear();
 	pipelined::memcpy(0,0,0);
 
 	double rate = (double)pipelined::counters::cycles/(double)n;
