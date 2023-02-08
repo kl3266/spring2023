@@ -283,7 +283,7 @@ namespace pipelined
 
     namespace operations
     {
-	bool process(operation* op) { return op->process(); } 
+	bool process(operation* op, u64 dispatch) { return op->process(dispatch); } 
     };
 
     namespace instructions

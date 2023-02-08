@@ -300,11 +300,12 @@ namespace pipelined
 		    out << std::endl;
 		    out.copyfmt(state);
 		}
-		virtual bool 		process()				// process this operation
+		virtual bool 		process(u64 dispatch)			// process this operation
 		{
 		    _count = counters::operations;
 		    counters::operations++;					// increment operation count
 		    u64 minissue = ready(); _ready = minissue;			// inputs ready
+		    minissue = max(minissue,dispatch);				// account for operation dispatch 
 		    minissue = target(minissue);				// save results and update ready time for output register
 		    bool issuable = false;					// look for earliest issue possible
 		    while (!issuable)
@@ -342,7 +343,7 @@ namespace pipelined
 		}
 	};
 
-	bool process(operation* op);
+	bool process(operation* op, u64 dispatch);
 
 	class addi : public operation
 	{
@@ -639,6 +640,7 @@ namespace pipelined
 		virtual std::string	dasm() = 0;
 		u64&	count()		{ return _count; }
 		const u64& count() const{ return _count; }
+		u64 dispatched() const	{ return _dispatched; }
 		void output(std::ostream& out)
 		{
 		    if (first)
@@ -684,7 +686,7 @@ namespace pipelined
 		i16	_SI;
 	    public:
 		addi(gprnum RT, gprnum RA, i16 SI, u32 addr) : instruction(addr) { _RT = RT; _RA = RA; _SI = SI; }
-		bool process() { return operations::process(new operations::addi(_RT, _RA, _SI)); }
+		bool process() { return operations::process(new operations::addi(_RT, _RA, _SI), dispatched()); }
 		static bool execute(gprnum RT, gprnum RA, i16 SI, u32 line) { return instructions::process(new addi(RT, RA, SI, 4*line)); }
 		std::string dasm() { std::string str = "addi (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
@@ -696,7 +698,7 @@ namespace pipelined
 		i16	_SI;
 	    public:
 		cmpi(gprnum RA, i16 SI, u32 addr) : instruction(addr) { _RA = RA; _SI = SI; }
-		bool process() { return operations::process(new operations::cmpi(_RA, _SI)); }
+		bool process() { return operations::process(new operations::cmpi(_RA, _SI), dispatched()); }
 		static bool execute(gprnum RA, i16 SI, u32 line) { return instructions::process(new cmpi(RA, SI, 4*line)); }
 		std::string dasm() { std::string str = "cmpi (r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
@@ -708,7 +710,7 @@ namespace pipelined
 		gprnum	_RA;
 	    public:
 		lbz(gprnum RT, gprnum RA, u32 addr) : instruction(addr) { _RT = RT; _RA = RA; }
-		bool process() { return operations::process(new operations::lbz(_RT, _RA)); }
+		bool process() { return operations::process(new operations::lbz(_RT, _RA), dispatched()); }
 		static bool execute(gprnum RT, gprnum RA, u32 line) { return instructions::process(new lbz(RT, RA, 4*line)); }
 		std::string dasm() { std::string str = "lbz (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
@@ -720,7 +722,7 @@ namespace pipelined
 		gprnum	_RA;
 	    public:
 		stb(gprnum RS, gprnum RA, u32 addr) : instruction(addr) { _RS = RS, _RA = RA; }
-		bool process() { return operations::process(new operations::stb(_RS, _RA)); }
+		bool process() { return operations::process(new operations::stb(_RS, _RA), dispatched()); }
 		static bool execute(gprnum RS, gprnum RA, u32 line) { return instructions::process(new stb(RS, RA, 4*line)); }
 		std::string dasm() { std::string str = "stb (r" + std::to_string(_RS) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
@@ -732,7 +734,7 @@ namespace pipelined
 		const char*	_label;
 	    public:
 		beq(i16 BD, const char *label, u32 addr) : instruction(addr) { _BD = BD; _label = label; }
-		bool process() { return operations::process(new operations::beq(_BD)); }
+		bool process() { return operations::process(new operations::beq(_BD), dispatched()); }
 		static bool execute(i16 BD, const char *label, u32 line) { return instructions::process(new beq(BD, label, 4*line)); }
 		std::string dasm() { std::string str = "beq (" + std::string(_label) + ")"; return str; }
 	};
@@ -744,7 +746,7 @@ namespace pipelined
 		const char*	_label;
 	    public:
 		b(i16 BD, const char *label, u32 addr) : instruction(addr) { _BD = BD; _label = label; }
-		bool process() { return operations::process(new operations::b(_BD)); }
+		bool process() { return operations::process(new operations::b(_BD), dispatched()); }
 		static bool execute(i16 BD, const char *label, u32 line) { return instructions::process(new b(BD, label, 4*line)); }
 		std::string dasm() { std::string str = "b (" + std::string(_label) + ")"; return str; }
 	};
@@ -755,7 +757,7 @@ namespace pipelined
 		fprnum	_FT;
 	    public:
 		zd(fprnum FT, u32 addr) : instruction(addr) { _FT = FT; }
-		bool process() { return operations::process(new operations::zd(_FT)); }
+		bool process() { return operations::process(new operations::zd(_FT), dispatched()); }
 		static bool execute(fprnum FT, u32 line) { return instructions::process(new zd(FT, 4*line)); }
 		std::string dasm() { std::string str = "zd (f" + std::to_string(_FT) + ")"; return str; }
 	};
@@ -768,7 +770,7 @@ namespace pipelined
 		fprnum	_FB;
 	    public:
 		fmul(fprnum FT, fprnum FA, fprnum FB, u32 addr) : instruction(addr) { _FT = FT; _FA = FA; _FB = FB; }
-		bool process() { return operations::process(new operations::fmul(_FT, _FA, _FB)); }
+		bool process() { return operations::process(new operations::fmul(_FT, _FA, _FB), dispatched()); }
 		static bool execute(fprnum FT, fprnum FA, fprnum FB, u32 line) { return instructions::process(new fmul(FT, FA, FB, 4*line)); }
 		std::string dasm() { std::string str = "fmul (f" + std::to_string(_FT) + ", f" + std::to_string(_FA) + ", f" + std::to_string(_FB) + ")"; return str; }
 	};
@@ -782,7 +784,7 @@ namespace pipelined
 		fprnum	_FB;
 	    public:
 		fadd(fprnum FT, fprnum FA, fprnum FB, u32 addr) : instruction(addr) { _FT = FT; _FA = FA; _FB = FB; }
-		bool process() { return operations::process(new operations::fadd(_FT, _FA, _FB)); }
+		bool process() { return operations::process(new operations::fadd(_FT, _FA, _FB), dispatched()); }
 		static bool execute(fprnum FT, fprnum FA, fprnum FB, u32 line) { return instructions::process(new fadd(FT, FA, FB, 4*line)); }
 		std::string dasm() { std::string str = "fadd (f" + std::to_string(_FT) + ", f" + std::to_string(_FA) + ", f" + std::to_string(_FB) + ")"; return str; }
 	};
@@ -794,7 +796,7 @@ namespace pipelined
 		gprnum	_RA;
 	    public:
 		lfd(fprnum FT, gprnum RA, u32 addr) : instruction(addr) { _FT = FT; _RA = RA; }
-		bool process() { return operations::process(new operations::lfd(_FT, _RA)); }
+		bool process() { return operations::process(new operations::lfd(_FT, _RA), dispatched()); }
 		static bool execute(fprnum FT, gprnum RA, u32 line) { return instructions::process(new lfd(FT, RA, 4*line)); }
 		std::string dasm() { std::string str = "lfd (f" + std::to_string(_FT) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
@@ -806,7 +808,7 @@ namespace pipelined
 		gprnum	_RA;
 	    public:
 		stfd(fprnum FS, gprnum RA, u32 addr) : instruction(addr) { _FS = FS; _RA = RA; }
-		bool process() { return operations::process(new operations::stfd(_FS, _RA)); }
+		bool process() { return operations::process(new operations::stfd(_FS, _RA), dispatched()); }
 		static bool execute(fprnum FS, gprnum RA, u32 line) { return instructions::process(new stfd(FS, RA, 4*line)); }
 		std::string dasm() { std::string str = "stfd (f" + std::to_string(_FS) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
