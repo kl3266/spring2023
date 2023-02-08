@@ -10,8 +10,10 @@ int main
     char	**argv
 )
 {
-    printf("L1: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n", 
-	   pipelined::caches::L1.capacity(), pipelined::caches::L1.nsets(), pipelined::caches::L1.nways(), pipelined::caches::L1.linesize());
+    printf("L1D: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n",
+	   pipelined::caches::L1D.capacity(), pipelined::caches::L1D.nsets(), pipelined::caches::L1D.nways(), pipelined::caches::L1D.linesize());
+    printf("L1I: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n",
+	   pipelined::caches::L1I.capacity(), pipelined::caches::L1I.nsets(), pipelined::caches::L1I.nways(), pipelined::caches::L1I.linesize());
 
     for (uint32_t m = 2; m <= 32; m *= 2) for (uint32_t n = m/2; n <= m; n *= 2)
     {
@@ -29,7 +31,6 @@ int main
 	for (uint32_t i=0; i<M; i++) for (uint32_t j=0; j<N; j++) *((double*)(pipelined::MEM.data() + A + (i*N+j)*sizeof(double))) = (double)i;
 
 	pipelined::zeroctrs();
-	pipelined::caches::L1.clear();
 
 	pipelined::GPR[3].data() = Y;
 	pipelined::GPR[4].data() = A;
@@ -40,8 +41,8 @@ int main
 	pipelined::mxv(0,0,0,0,0);
 	
 	if (pipelined::tracing) printf("\n");
-	printf("M = %6d, N = %6d : instructions = %6lu, cycles = %8lu, L1 accesses= %6lu, L1 misses = %6lu :",
-		M, N, pipelined::counters::operations, pipelined::counters::cycles, pipelined::caches::L1.accesses, pipelined::caches::L1.misses);
+	printf("M = %6d, N = %6d : instructions = %6lu, cycles = %8lu, L1D accesses= %6lu, L1D misses = %6lu | ",
+		M, N, pipelined::counters::operations, pipelined::counters::cycles, pipelined::caches::L1D.accesses, pipelined::caches::L1D.misses);
 	bool pass = true;
 	for (uint32_t i=0; i<M; i++)
 	{

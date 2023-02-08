@@ -8,15 +8,16 @@ int main
     char	**argv
 )
 {
-    printf("L1: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n", 
-	   pipelined::caches::L1.capacity(), pipelined::caches::L1.nsets(), pipelined::caches::L1.nways(), pipelined::caches::L1.linesize());
+    printf("L1D: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n",
+	   pipelined::caches::L1D.capacity(), pipelined::caches::L1D.nsets(), pipelined::caches::L1D.nways(), pipelined::caches::L1D.linesize());
+    printf("L1I: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n",
+	   pipelined::caches::L1I.capacity(), pipelined::caches::L1I.nsets(), pipelined::caches::L1I.nways(), pipelined::caches::L1I.linesize());
     pipelined::zeromem();
     const uint32_t N = 1024;
     for (uint32_t i=0; i<N; i++) pipelined::MEM[i] = rand() % 0xff;
     for (uint32_t n = 1; n<=N; n *= 2)
     {
 	pipelined::zeroctrs();
-	pipelined::caches::L1.clear();
 
 	pipelined::GPR[3].data() = 1024;
 	pipelined::GPR[4].data() = 0;
@@ -27,8 +28,8 @@ int main
 	double rate = (double)pipelined::counters::cycles/(double)n;
 	
 	if (pipelined::tracing) printf("\n");
-	printf("n = %6d : instructions = %6lu, cycles = %6lu, L1 accesses= %6lu, L1 hits = %6lu",
-		n, pipelined::counters::operations, pipelined::counters::cycles, pipelined::caches::L1.accesses, pipelined::caches::L1.hits);
+	printf("n = %6d : instructions = %6lu, cycles = %6lu, L1D accesses= %6lu, L1D hits = %6lu",
+		n, pipelined::counters::operations, pipelined::counters::cycles, pipelined::caches::L1D.accesses, pipelined::caches::L1D.hits);
 	printf(", cyc/B = %10.2f", rate);
 
 	bool pass = true;
