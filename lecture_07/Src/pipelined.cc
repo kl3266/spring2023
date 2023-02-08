@@ -2,7 +2,7 @@
 
 namespace pipelined
 {
-    bool	tracing = false;
+    bool	tracing = true;
     bool	operations::operation::first = true;
     bool	instructions::instruction::first = true;
 
@@ -16,6 +16,8 @@ namespace pipelined
     const u32 	params::FPR::N = 8;
     const u32	params::Backend::maxissue = 1;
     const u32	params::PRF::N = 64;
+    const u32	params::Frontend::DECODE::latency = 1;
+    const u32	params::Frontend::DISPATCH::latency = 1;
 
     std::vector<u8>		MEM(params::MEM::N);
     std::vector<reg<u32>>	GPR(params::GPR::N);
@@ -67,7 +69,8 @@ namespace pipelined
 
     namespace caches
     {
-        cache   L1(params::L1::nsets, params::L1::nways, params::L1::linesize);
+        cache   L1D(params::L1::nsets, params::L1::nways, params::L1::linesize);
+	cache	L1I(params::L1::nsets, params::L1::nways, params::L1::linesize);
 
         cache::cache(uint32_t nsets, uint32_t nways, uint32_t linesize) : _sets(nsets)
         {
@@ -242,6 +245,7 @@ namespace pipelined
     uint64_t    counters::operations = 0;       // operation counter
     uint64_t    counters::cycles = 0;           // cycle counter
     uint64_t    counters::lastissued = 0;       // last issue cycle
+    uint64_t    counters::lastfetched = 0;      // last fetch cycle
 
     void zeromem()
     {
@@ -256,6 +260,7 @@ namespace pipelined
 	counters::operations = 0;
 	counters::cycles = 0;
 	counters::lastissued = 0;
+	counters::lastfetched = 0;
 	PRF::next = 0;
 	for (u32 i=0; i<params::GPR::N; i++) GPR[i].idx() = PRF::next++;
 	for (u32 i=0; i<params::FPR::N; i++) FPR[i].idx() = PRF::next++;
@@ -272,6 +277,8 @@ namespace pipelined
 	units::STU.clear();
 	units::BRU.clear();
 	operations::issued.clear();
+	pipelined::caches::L1D.clear();
+	pipelined::caches::L1I.clear();
     }
 
     namespace operations
@@ -285,6 +292,9 @@ namespace pipelined
 	{ 
 	    inst->count() = counters::instructions;
 	    counters::instructions++;
+	    inst->fetch();	// fetch time
+	    inst->decode();	// decode time
+	    inst->dispatch();	// dispatch time
 	    if (tracing) inst->output(std::cout);
 	    return inst->process(); 
 	}

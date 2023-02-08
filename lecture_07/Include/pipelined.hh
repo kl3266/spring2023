@@ -55,6 +55,24 @@ namespace pipelined
 	    extern const u32	latency;
 	};
 
+	namespace Frontend
+	{
+	    namespace FETCH
+	    {
+		extern const u32	latency;
+	    };
+
+	    namespace DECODE
+	    {
+		extern const u32	latency;
+	    };
+
+	    namespace DISPATCH
+	    {
+		extern const u32	latency;
+	    };
+	};
+
 	namespace Backend
 	{
 	    extern const u32	maxissue;	// maximum operations that can be issued per cycle
@@ -68,6 +86,7 @@ namespace pipelined
 	extern u64	operations;
 	extern u64	cycles;
 	extern u64	lastissued;
+	extern u64	lastfetched;
     };
 
     static u64 max(u64 a)			{ return a; }
@@ -232,7 +251,8 @@ namespace pipelined
                 void            clear();                			// clear the cache
         };
 
-        extern cache L1;
+        extern cache L1D;
+        extern cache L1I;
     };
 
     extern uint32_t     CIA;                    // current instruction address
@@ -384,7 +404,7 @@ namespace pipelined
 		u32	_idx;
 	    public:
 		lbz(gprnum RT, gprnum RA) { _RT = RT; _RA = RA; _latency = 0; }
-		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.contains(EA,1) ? params::L1::latency : params::MEM::latency; return _latency; }
+		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1D.contains(EA,1) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::LDU; }
 		u64 target(u64 cycle) 
 		{ 
@@ -396,7 +416,7 @@ namespace pipelined
 		{
 		    GPR[_RA].used(cycle);
 		    u32 EA = GPR[_RA].data(); 			// compute effective address of load
-		    u8* data = caches::L1.fill(EA, 1);		// fill the cache with the line, if not already there
+		    u8* data = caches::L1D.fill(EA, 1);		// fill the cache with the line, if not already there
 		    u32 RES = *((u8*)data);			// get data from the cache
 		    GPR[_RT].idx()   = _idx;
 		    GPR[_RT].data()  = RES;
@@ -419,12 +439,12 @@ namespace pipelined
 		{
 		    GPR[_RA].used(cycle);
 		    uint32_t EA = GPR[_RA].data();		// compute effective address of store
-		    u8* data = caches::L1.fill(EA, 1);		// fill the cache with the line, if not already there
+		    u8* data = caches::L1D.fill(EA, 1);		// fill the cache with the line, if not already there
 		    *((u8*)data) = GPR[_RS].data() & 0xff;	// write data to cache
                     MEM[EA] = GPR[_RS].data() & 0xff;		// write to memory as well, since L1 is write-through!
 		    return false; 
 		}
-		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.contains(EA,1) ? params::L1::latency : params::MEM::latency; return _latency; }
+		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1D.contains(EA,1) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::STU; }
 		u64 target(u64 cycle) { return cycle; }
 		u64 ready() { return max(GPR[_RA].ready(), GPR[_RS].ready()); }
@@ -440,7 +460,7 @@ namespace pipelined
 		u32	_idx;
 	    public:
 		lfd(fprnum FT, gprnum RA) { _FT = FT; _RA = RA; _latency = 0; }
-		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.contains(EA,8) ? params::L1::latency : params::MEM::latency; return _latency; }
+		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1D.contains(EA,8) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::LDU; }
 		u64 target(u64 cycle) 
 		{ 
@@ -452,7 +472,7 @@ namespace pipelined
 		{
 		    GPR[_RA].used(cycle);
 		    u32 EA = GPR[_RA].data();			// compute effective address of load
-		    u8* data = caches::L1.fill(EA, 8);		// fill the cache with the line, if not already there
+		    u8* data = caches::L1D.fill(EA, 8);		// fill the cache with the line, if not already there
 		    double RES = *((double*)data);		// get data from the cache
 		    FPR[_FT].idx()   = _idx;
 		    FPR[_FT].data()  = RES;
@@ -475,12 +495,12 @@ namespace pipelined
 		{
 		    GPR[_RA].used(cycle);
 		    u32 EA = GPR[_RA].data();				// compute effective address of store
-		    u8* data = caches::L1.fill(EA, 8);			// fill the cache with the line, if not already there
+		    u8* data = caches::L1D.fill(EA, 8);			// fill the cache with the line, if not already there
 		    *((double*)(MEM.data() + EA)) = FPR[_FS].data();	// write data to cache
 		    *((double*)data) = FPR[_FS].data();			// write to memory as well, since L1 is write-through!
 		    return false;
 		}
-		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1.contains(EA,8) ? params::L1::latency : params::MEM::latency; return _latency; }
+		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1D.contains(EA,8) ? params::L1::latency : params::MEM::latency; return _latency; }
 		units::unit& unit() { return units::STU; }
 		u64 target(u64 cycle) { return cycle; }
 		u64 ready() { return max(GPR[_RA].ready(), FPR[_FS].ready()); }
@@ -604,11 +624,16 @@ namespace pipelined
 	class instruction
 	{
 	    private:
-		static bool	first;	// first instruction processed
+		static bool	first;		// first instruction processed
 
-		u64		_count;	// instruction #
+		u64		_count;		// instruction #
+		u32		_addr;		// instruction address
+		u64		_fetched; 	// fetch cycle
+		u64		_decoded;	// decode cycle
+		u64		_dispatched;	// dispatch cycle
 
 	    public:
+		instruction(u32 addr) { _addr = addr; }
 		static void		zero() { first = true; }
 		virtual bool 		process() = 0;
 		virtual std::string	dasm() = 0;
@@ -618,15 +643,34 @@ namespace pipelined
 		{
 		    if (first)
 		    {
-			out << "  instr # ,          instruction ,      op # ,            operation ,     ready ,    issued ,  complete" << std::endl;
+			out << " instr # ,address ,          instruction ,    fetch ,   decode , dispatch ,      op # ,            operation ,     ready ,    issued ,  complete" << std::endl;
 			first = false;
 		    }
 
 		    std::ios state(nullptr);
 		    state.copyfmt(out);
-		    out << std::setw( 9) << std::setfill('0') << _count     << " , ";
-		    out << std::setw(20) << std::setfill(' ') << dasm()     << " , ";
+		    out << std::setw( 8) << std::setfill('0') << _count     	<< " , ";
+		    out << "0x" << std::hex << std::setw( 4) << std::setfill('0') << _addr << std::dec << " , ";
+		    out << std::setw(20) << std::setfill(' ') << dasm()     	<< " , ";
+		    out << std::setw( 8) << std::setfill('0') << _fetched     	<< " , ";
+		    out << std::setw( 8) << std::setfill('0') << _decoded   	<< " , ";
+		    out << std::setw( 8) << std::setfill('0') << _dispatched   	<< " , ";
 		    out.copyfmt(state);
+		}
+		void	fetch()
+		{ 
+		    u32 latency = caches::L1I.contains(_addr, 4) ? params::L1::latency : params::MEM::latency;
+		    _fetched = counters::lastfetched + latency;
+		    counters::lastfetched = _fetched;
+		    caches::L1I.fill(_addr, 4);
+		}
+		void	decode()
+		{ 
+		    _decoded = _fetched + params::Frontend::DECODE::latency;
+		}
+		void 	dispatch()
+		{ 
+		    _dispatched = _decoded + params::Frontend::DISPATCH::latency;
 		}
 	};
 
@@ -639,9 +683,9 @@ namespace pipelined
 		gprnum	_RA;
 		i16	_SI;
 	    public:
-		addi(gprnum RT, gprnum RA, i16 SI) { _RT = RT; _RA = RA; _SI = SI; }
+		addi(gprnum RT, gprnum RA, i16 SI, u32 addr) : instruction(addr) { _RT = RT; _RA = RA; _SI = SI; }
 		bool process() { return operations::process(new operations::addi(_RT, _RA, _SI)); }
-		static bool execute(gprnum RT, gprnum RA, i16 SI) { return instructions::process(new addi(RT, RA, SI)); }
+		static bool execute(gprnum RT, gprnum RA, i16 SI, u32 line) { return instructions::process(new addi(RT, RA, SI, 4*line)); }
 		std::string dasm() { std::string str = "addi (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
 
@@ -651,9 +695,9 @@ namespace pipelined
 		gprnum	_RA;
 		i16	_SI;
 	    public:
-		cmpi(gprnum RA, i16 SI) { _RA = RA; _SI = SI; }
+		cmpi(gprnum RA, i16 SI, u32 addr) : instruction(addr) { _RA = RA; _SI = SI; }
 		bool process() { return operations::process(new operations::cmpi(_RA, _SI)); }
-		static bool execute(gprnum RA, i16 SI) { return instructions::process(new cmpi(RA, SI)); }
+		static bool execute(gprnum RA, i16 SI, u32 line) { return instructions::process(new cmpi(RA, SI, 4*line)); }
 		std::string dasm() { std::string str = "cmpi (r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
 
@@ -663,9 +707,9 @@ namespace pipelined
 		gprnum 	_RT;
 		gprnum	_RA;
 	    public:
-		lbz(gprnum RT, gprnum RA) { _RT = RT; _RA = RA; }
+		lbz(gprnum RT, gprnum RA, u32 addr) : instruction(addr) { _RT = RT; _RA = RA; }
 		bool process() { return operations::process(new operations::lbz(_RT, _RA)); }
-		static bool execute(gprnum RT, gprnum RA) { return instructions::process(new lbz(RT, RA)); }
+		static bool execute(gprnum RT, gprnum RA, u32 line) { return instructions::process(new lbz(RT, RA, 4*line)); }
 		std::string dasm() { std::string str = "lbz (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
 
@@ -675,32 +719,34 @@ namespace pipelined
 		gprnum	_RS;
 		gprnum	_RA;
 	    public:
-		stb(gprnum RS, gprnum RA) { _RS = RS, _RA = RA; }
+		stb(gprnum RS, gprnum RA, u32 addr) : instruction(addr) { _RS = RS, _RA = RA; }
 		bool process() { return operations::process(new operations::stb(_RS, _RA)); }
-		static bool execute(gprnum RS, gprnum RA) { return instructions::process(new stb(RS, RA)); }
+		static bool execute(gprnum RS, gprnum RA, u32 line) { return instructions::process(new stb(RS, RA, 4*line)); }
 		std::string dasm() { std::string str = "stb (r" + std::to_string(_RS) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
 
 	class beq : public instruction
 	{
 	    private:
-		i16	_BD;
+		i16		_BD;
+		const char*	_label;
 	    public:
-		beq(i16 BD) { _BD = BD; }
+		beq(i16 BD, const char *label, u32 addr) : instruction(addr) { _BD = BD; _label = label; }
 		bool process() { return operations::process(new operations::beq(_BD)); }
-		static bool execute(i16 BD) { return instructions::process(new beq(BD)); }
-		std::string dasm() { std::string str = "beq (" + std::to_string(_BD) + ")"; return str; }
+		static bool execute(i16 BD, const char *label, u32 line) { return instructions::process(new beq(BD, label, 4*line)); }
+		std::string dasm() { std::string str = "beq (" + std::string(_label) + ")"; return str; }
 	};
 
 	class b : public instruction
 	{
 	    private:
-		i16	_BD;
+		i16	 	_BD;
+		const char*	_label;
 	    public:
-		b(i16 BD) { _BD = BD; }
+		b(i16 BD, const char *label, u32 addr) : instruction(addr) { _BD = BD; _label = label; }
 		bool process() { return operations::process(new operations::b(_BD)); }
-		static bool execute(i16 BD) { return instructions::process(new b(BD)); }
-		std::string dasm() { std::string str = "b (" + std::to_string(_BD) + ")"; return str; }
+		static bool execute(i16 BD, const char *label, u32 line) { return instructions::process(new b(BD, label, 4*line)); }
+		std::string dasm() { std::string str = "b (" + std::string(_label) + ")"; return str; }
 	};
 
 	class zd : public instruction
@@ -708,9 +754,9 @@ namespace pipelined
 	    private:
 		fprnum	_FT;
 	    public:
-		zd(fprnum FT) { _FT = FT; }
+		zd(fprnum FT, u32 addr) : instruction(addr) { _FT = FT; }
 		bool process() { return operations::process(new operations::zd(_FT)); }
-		static bool execute(fprnum FT) { return instructions::process(new zd(FT)); }
+		static bool execute(fprnum FT, u32 line) { return instructions::process(new zd(FT, 4*line)); }
 		std::string dasm() { std::string str = "zd (f" + std::to_string(_FT) + ")"; return str; }
 	};
 
@@ -721,9 +767,9 @@ namespace pipelined
 		fprnum	_FA;
 		fprnum	_FB;
 	    public:
-		fmul(fprnum FT, fprnum FA, fprnum FB) { _FT = FT; _FA = FA; _FB = FB; }
+		fmul(fprnum FT, fprnum FA, fprnum FB, u32 addr) : instruction(addr) { _FT = FT; _FA = FA; _FB = FB; }
 		bool process() { return operations::process(new operations::fmul(_FT, _FA, _FB)); }
-		static bool execute(fprnum FT, fprnum FA, fprnum FB) { return instructions::process(new fmul(FT, FA, FB)); }
+		static bool execute(fprnum FT, fprnum FA, fprnum FB, u32 line) { return instructions::process(new fmul(FT, FA, FB, 4*line)); }
 		std::string dasm() { std::string str = "fmul (f" + std::to_string(_FT) + ", f" + std::to_string(_FA) + ", f" + std::to_string(_FB) + ")"; return str; }
 	};
 
@@ -735,9 +781,9 @@ namespace pipelined
 		fprnum	_FA;
 		fprnum	_FB;
 	    public:
-		fadd(fprnum FT, fprnum FA, fprnum FB) { _FT = FT; _FA = FA; _FB = FB; }
+		fadd(fprnum FT, fprnum FA, fprnum FB, u32 addr) : instruction(addr) { _FT = FT; _FA = FA; _FB = FB; }
 		bool process() { return operations::process(new operations::fadd(_FT, _FA, _FB)); }
-		static bool execute(fprnum FT, fprnum FA, fprnum FB) { return instructions::process(new fadd(FT, FA, FB)); }
+		static bool execute(fprnum FT, fprnum FA, fprnum FB, u32 line) { return instructions::process(new fadd(FT, FA, FB, 4*line)); }
 		std::string dasm() { std::string str = "fadd (f" + std::to_string(_FT) + ", f" + std::to_string(_FA) + ", f" + std::to_string(_FB) + ")"; return str; }
 	};
 
@@ -747,9 +793,9 @@ namespace pipelined
 		fprnum 	_FT;
 		gprnum	_RA;
 	    public:
-		lfd(fprnum FT, gprnum RA) { _FT = FT; _RA = RA; }
+		lfd(fprnum FT, gprnum RA, u32 addr) : instruction(addr) { _FT = FT; _RA = RA; }
 		bool process() { return operations::process(new operations::lfd(_FT, _RA)); }
-		static bool execute(fprnum FT, gprnum RA) { return instructions::process(new lfd(FT, RA)); }
+		static bool execute(fprnum FT, gprnum RA, u32 line) { return instructions::process(new lfd(FT, RA, 4*line)); }
 		std::string dasm() { std::string str = "lfd (f" + std::to_string(_FT) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
 
@@ -759,9 +805,9 @@ namespace pipelined
 		fprnum 	_FS;
 		gprnum	_RA;
 	    public:
-		stfd(fprnum FS, gprnum RA) { _FS = FS; _RA = RA; }
+		stfd(fprnum FS, gprnum RA, u32 addr) : instruction(addr) { _FS = FS; _RA = RA; }
 		bool process() { return operations::process(new operations::stfd(_FS, _RA)); }
-		static bool execute(fprnum FS, gprnum RA) { return instructions::process(new stfd(FS, RA)); }
+		static bool execute(fprnum FS, gprnum RA, u32 line) { return instructions::process(new stfd(FS, RA, 4*line)); }
 		std::string dasm() { std::string str = "stfd (f" + std::to_string(_FS) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
     };
