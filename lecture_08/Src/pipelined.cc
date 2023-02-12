@@ -230,7 +230,7 @@ namespace pipelined
 		{
 		    u32 addr = sets()[setix][lru].addr * linesize();
 		    for (u32 i=0; i<linesize(); i++) 
-			M[addr + i] = sets()[setix][lru].data[i];	// fill the entry with L bytes from memory, starting at addrress EA
+			M[addr + i] = sets()[setix][lru].data[i];			// fill memory from the cache entry
 		}
                 sets()[setix][lru].valid = false;					// entry is now valid
                 sets()[setix][lru].modified = false;					// fresh entry
@@ -240,7 +240,47 @@ namespace pipelined
 
 	entry*	cache::evict(u32 EA, u32 L, caches::entry &E)
 	{
-	    assert(false);
+	    u32 setix; u32 wayix; u32 offset = EA % linesize(); u32 lineaddr = EA / linesize();
+	    if (contains(EA, L, setix, wayix))
+	    {
+		// This is a hit! It should not happen.
+		assert(false);
+		return 0;
+	    }
+	    else
+	    {
+	    	// This is a miss! We need to find the LRU entry
+                u64 lasttouch = counters::cycles;
+                u32 lru = nways();
+                for (wayix = 0; wayix < nways(); wayix++)
+                {
+                    if (!sets()[setix][wayix].valid)
+                    {
+                        // invalid entry, can use this one as the lru
+                        lru = wayix;
+                        break;
+                    }
+                    if (sets()[setix][wayix].touched <= lasttouch)
+                    {
+                        // older than current candidate - update
+                        lru = wayix;
+                        lasttouch = sets()[setix][wayix].touched;
+                    }
+                }
+                assert(lru < nways());
+		if (sets()[setix][lru].valid && sets()[setix][lru].modified)
+		{
+		    u32 addr = sets()[setix][lru].addr * linesize();
+		    for (u32 i=0; i<linesize(); i++) 
+			E.data[i] = sets()[setix][lru].data[i];				// fill the target cache entry from this entry
+		    E.valid = sets()[setix][lru].valid;
+		    E.modified = sets()[setix][lru].modified;
+		    E.addr = sets()[setix][lru].addr;
+		}
+                sets()[setix][lru].valid = false;					// entry is now valid
+                sets()[setix][lru].modified = false;					// fresh entry
+		return &(sets()[setix][lru]);						// return the contents
+	    }
 	}
 
 	u8*	cache::fill(u32 EA, u32 L, std::vector<u8> &M)
@@ -373,8 +413,25 @@ namespace pipelined
 	    {
 		// this is an L2 miss
 		caches::L2.miss(EA, L);
-		caches::L2.evict(EA, L, MEM);
-		caches::L2.fill(EA, L, MEM);
+
+		// let us free up space in L3 before we evict L2
+		caches::entry *empty = caches::L3.evict(EA, L, MEM);	// evict a line from L3 to memory
+		caches::L2.evict(EA, L, *empty);			// evict a line from L2 to L3
+
+		// Now, let us see if we find the data in L3
+		caches::L3.access(EA, L);
+		if (caches::L3.contains(EA, L))
+		{
+		    // This is an L3 hit
+		    caches::L3.hit(EA, L);
+		    caches::L2.fill(EA, L, *(caches::L3.find(EA, L)));
+		}
+		else
+		{
+		    // This is an L3 miss
+		    caches::L3.miss(EA, L);
+		    caches::L2.fill(EA, L, MEM);
+		}
 	    }
 	    caches::L1D.fill(EA, L, *(caches::L2.find(EA, L)));
 	}
