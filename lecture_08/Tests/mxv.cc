@@ -43,6 +43,9 @@ int main
 	pipelined::GPR[7].data() = N;
 	
 	pipelined::mxv(0,0,0,0,0);
+
+	pipelined::caches::L2.flush();
+	pipelined::caches::L3.flush();
 	
 	if (pipelined::tracing) printf("\n");
 	printf("M = %4d, N = %4d : instr = %6lu, cyc = %8lu, L1D(access= %6lu, hit = %6lu, miss = %6lu), L2(miss = %6lu), L3(miss = %6lu) | ",

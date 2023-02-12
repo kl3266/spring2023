@@ -229,6 +229,7 @@ namespace pipelined
         {
             public:
                 bool            valid;          // is entry valid?
+		bool		modified;	// has entry been modified?
                 uint32_t        addr;           // address of this entry
                 uint64_t        touched;        // last time this entry was used
 		std::vector<u8>	data;		// data in this entry
@@ -267,12 +268,15 @@ namespace pipelined
 		u8*		fill(u32 EA, u32 L, std::vector<u8> &M);	// loads data in address range [EA, EA+L) from memory into this cache, returns a pointer to the data in cache
 		u8*		fill(u32 EA, u32 L, entry &E);			// loads data in address range [EA, EA+L) from another cache's entry into this cache, returns a pointer to the data in cache
                 void            clear();                			// clear the cache
+                void            flush();                			// write back to memory any modified data in cache
 		u32		lineaddr(u32 EA);				// returns the line address for effective address EA;
 		u32		offset(u32 EA);					// returns the offset within a line for effective address EA;
 		entry*		find(u32 EA, u32 L);				// find the cache entry for the effective address range [EA, EA+L)
-		void		access(u32 EA, u32 L);
-		void		hit(u32 EA, u32 L);
-		void		miss(u32 EA, u32 L);
+		entry*		evict(u32 EA, u32 L, std::vector<u8> &M);	// free up a cache entry to store address range [EA, EA+L) by evicting to memory
+		entry*		evict(u32 EA, u32 L, entry &E);			// free up a cache entry to store address range [EA, EA+L) by evicting to another cache
+		void		access(u32 EA, u32 L);				// count number of accesses
+		void		hit(u32 EA, u32 L);				// count number of hits
+		void		miss(u32 EA, u32 L);				// count number of misses
         };
 
         extern cache L1D;
@@ -478,8 +482,8 @@ namespace pipelined
 		    GPR[_RA].used(cycle);
 		    uint32_t EA = GPR[_RA].data();				// compute effective address of store
 		    u8* data = load(EA, 1);					// fill the cache with the line, if not already there
-		    caches::L1D.find(EA, 1)->store(EA,(u8)GPR[_RS].data()); 	// write data to cache
-                    MEM[EA] = GPR[_RS].data() & 0xff;				// write to memory as well, since L1 is write-through!
+		    caches::L1D.find(EA, 1)->store(EA,(u8)GPR[_RS].data()); 	// write data to L1 cache
+		    caches::L2 .find(EA, 1)->store(EA,(u8)GPR[_RS].data());	// write to L2 as well, since L1 is write-through!
 		    return false; 
 		}
 		u32 latency() 
@@ -552,8 +556,8 @@ namespace pipelined
 		    GPR[_RA].used(cycle);
 		    u32 EA = GPR[_RA].data();				// compute effective address of store
 		    u8* data = load(EA, 8);				// fill the cache with the line, if not already there
-		    caches::L1D.find(EA, 8)->store(EA,FPR[_FS].data());	// write data to cache
-		    *((double*)(MEM.data() + EA)) = FPR[_FS].data();	// write to memory as well, since L1 is write-through!
+		    caches::L1D.find(EA, 8)->store(EA,FPR[_FS].data());	// write data to L1 cache
+		    caches::L2 .find(EA, 8)->store(EA,FPR[_FS].data()); // write to L2 as well, since L1 is write-through!
 		    return false;
 		}
 		u32 latency() 

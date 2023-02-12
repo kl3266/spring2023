@@ -12,6 +12,11 @@ int main
 	   pipelined::caches::L1D.capacity(), pipelined::caches::L1D.nsets(), pipelined::caches::L1D.nways(), pipelined::caches::L1D.linesize());
     printf("L1I: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n",
 	   pipelined::caches::L1I.capacity(), pipelined::caches::L1I.nsets(), pipelined::caches::L1I.nways(), pipelined::caches::L1I.linesize());
+    printf("L2: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n",
+	   pipelined::caches::L2.capacity(), pipelined::caches::L2.nsets(), pipelined::caches::L2.nways(), pipelined::caches::L2.linesize());
+    printf("L3: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n",
+	   pipelined::caches::L3.capacity(), pipelined::caches::L3.nsets(), pipelined::caches::L3.nways(), pipelined::caches::L3.linesize());
+
     pipelined::zeromem();
     const uint32_t N = 1024;
     for (uint32_t i=0; i<N; i++) pipelined::MEM[i] = rand() % 0xff;
@@ -24,6 +29,9 @@ int main
 	pipelined::GPR[5].data() = n;
 	
 	pipelined::memcpy(0,0,0);
+
+	pipelined::caches::L2.flush();
+	pipelined::caches::L3.flush();
 
 	double rate = (double)pipelined::counters::cycles/(double)n;
 	
