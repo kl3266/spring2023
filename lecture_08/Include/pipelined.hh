@@ -235,6 +235,8 @@ namespace pipelined
 
 		entry(u32 linesize) : data(linesize) { }	// creates a cache entry with linesize bytes of storage
 		entry()	{ }					// default constructor, to be filled later
+		void store	(u32 EA, double D);		// stores double-precision value D in address EA
+		void store	(u32 EA, u8	B);		// streos byte B in address EA
         };
 
         typedef std::vector<entry>      set;
@@ -474,10 +476,10 @@ namespace pipelined
 		bool issue(u64 cycle) 
 		{
 		    GPR[_RA].used(cycle);
-		    uint32_t EA = GPR[_RA].data();		// compute effective address of store
-		    u8* data = load(EA, 1);			// fill the cache with the line, if not already there
-		    *((u8*)data) = GPR[_RS].data() & 0xff;	// write data to cache
-                    MEM[EA] = GPR[_RS].data() & 0xff;		// write to memory as well, since L1 is write-through!
+		    uint32_t EA = GPR[_RA].data();				// compute effective address of store
+		    u8* data = load(EA, 1);					// fill the cache with the line, if not already there
+		    caches::L1D.find(EA, 1)->store(EA,(u8)GPR[_RS].data()); 	// write data to cache
+                    MEM[EA] = GPR[_RS].data() & 0xff;				// write to memory as well, since L1 is write-through!
 		    return false; 
 		}
 		u32 latency() 
@@ -550,7 +552,7 @@ namespace pipelined
 		    GPR[_RA].used(cycle);
 		    u32 EA = GPR[_RA].data();				// compute effective address of store
 		    u8* data = load(EA, 8);				// fill the cache with the line, if not already there
-		    *((double*)data) = FPR[_FS].data();			// write data to cache
+		    caches::L1D.find(EA, 8)->store(EA,FPR[_FS].data());	// write data to cache
 		    *((double*)(MEM.data() + EA)) = FPR[_FS].data();	// write to memory as well, since L1 is write-through!
 		    return false;
 		}

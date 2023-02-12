@@ -302,6 +302,18 @@ namespace pipelined
 	return caches::L1D.find(EA, L)->data.data() + caches::L1D.offset(EA);
     }
 
+    void pipelined::caches::entry::store(u32 EA, double D)
+    {
+	u32 offset = EA % data.size();
+	*((double*)(data.data() + offset)) = D;
+    }
+
+    void pipelined::caches::entry::store(u32 EA, u8 B)
+    {
+	u32 offset = EA % data.size();
+	*((u8*)(data.data() + offset)) = B;
+    }
+
     flags_t     flags;                          // flags
 
     uint32_t    CIA;                            // current instruction address
