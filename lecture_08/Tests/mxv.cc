@@ -45,8 +45,8 @@ int main
 	pipelined::mxv(0,0,0,0,0);
 	
 	if (pipelined::tracing) printf("\n");
-	printf("M = %4d, N = %4d : instr = %6lu, cyc = %8lu, L1D(access= %6lu, miss = %6lu), L2(miss = %6lu), L3(miss = %6lu) | ",
-		M, N, pipelined::counters::operations, pipelined::counters::cycles, pipelined::caches::L1D.accesses, pipelined::caches::L1D.misses,
+	printf("M = %4d, N = %4d : instr = %6lu, cyc = %8lu, L1D(access= %6lu, hit = %6lu, miss = %6lu), L2(miss = %6lu), L3(miss = %6lu) | ",
+		M, N, pipelined::counters::operations, pipelined::counters::cycles, pipelined::caches::L1D.accesses, pipelined::caches::L1D.hits, pipelined::caches::L1D.misses,
 		pipelined::caches::L2.misses, pipelined::caches::L3.misses);
 	bool pass = true;
 	for (uint32_t i=0; i<M; i++)
