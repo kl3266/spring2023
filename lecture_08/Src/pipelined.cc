@@ -6,16 +6,29 @@ namespace pipelined
     bool	operations::operation::first = true;
     bool	instructions::instruction::first = true;
 
-    const u32	params::MEM::N = 65536;
+    const u32	params::MEM::N = 1024*1024;			// 1 MiB of main memory
     const u32 	params::MEM::latency = 300;
+
     const u32 	params::L1::latency = 2;
     const u32	params::L1::nsets = 16;
     const u32 	params::L1::nways = 4;
     const u32	params::L1::linesize = 8;
+
+    const u32 	params::L2::latency = 4;
+    const u32	params::L2::nsets = 64;
+    const u32 	params::L2::nways = 4;
+    const u32	params::L2::linesize = 8;
+
+    const u32 	params::L3::latency = 8;
+    const u32	params::L3::nsets = 64;
+    const u32 	params::L3::nways = 16;
+    const u32	params::L3::linesize = 8;
+
     const u32	params::GPR::N = 16;
     const u32 	params::FPR::N = 8;
-    const u32	params::Backend::maxissue = 1;
     const u32	params::PRF::N = 64;
+
+    const u32	params::Backend::maxissue = 1;
     const u32	params::Frontend::DECODE::latency = 1;
     const u32	params::Frontend::DISPATCH::latency = 1;
 
@@ -71,6 +84,8 @@ namespace pipelined
     {
         cache   L1D(params::L1::nsets, params::L1::nways, params::L1::linesize);
 	cache	L1I(params::L1::nsets, params::L1::nways, params::L1::linesize);
+	cache	L2 (params::L2::nsets, params::L2::nways, params::L2::linesize);
+	cache	L3 (params::L3::nsets, params::L3::nways, params::L3::linesize);
 
         cache::cache(uint32_t nsets, uint32_t nways, uint32_t linesize) : _sets(nsets)
         {
@@ -127,6 +142,7 @@ namespace pipelined
             return _sets;
         }
 
+	/*
         bool cache::hit(uint32_t addr)
         {
             accesses++;
@@ -173,6 +189,7 @@ namespace pipelined
                 return false;
             }
         }
+	*/
 
 	bool 	cache::contains(u32 EA, u32 L, u32 &setix, u32 &wayix)
 	{
@@ -190,6 +207,21 @@ namespace pipelined
 	{
 	    u32 setix; u32 wayix;
 	    return contains(EA, L, setix, wayix);
+	}
+
+	u32	cache::lineaddr(u32 EA)
+	{
+	    return EA - offset(EA);
+	}
+
+	u32	cache::offset(u32 EA)
+	{
+	    return EA % linesize();
+	}
+
+	entry*	cache::find(u32 EA)
+	{
+	    assert(false);
 	}
 
 	u8*	cache::fill(u32 EA, u32 L)
@@ -279,6 +311,8 @@ namespace pipelined
 	operations::issued.clear();
 	pipelined::caches::L1D.clear();
 	pipelined::caches::L1I.clear();
+	pipelined::caches:: L2.clear();
+	pipelined::caches:: L3.clear();
     }
 
     namespace operations

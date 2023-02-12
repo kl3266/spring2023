@@ -14,8 +14,12 @@ int main
 	   pipelined::caches::L1D.capacity(), pipelined::caches::L1D.nsets(), pipelined::caches::L1D.nways(), pipelined::caches::L1D.linesize());
     printf("L1I: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n",
 	   pipelined::caches::L1I.capacity(), pipelined::caches::L1I.nsets(), pipelined::caches::L1I.nways(), pipelined::caches::L1I.linesize());
+    printf("L2: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n",
+	   pipelined::caches::L2.capacity(), pipelined::caches::L2.nsets(), pipelined::caches::L2.nways(), pipelined::caches::L2.linesize());
+    printf("L3: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n",
+	   pipelined::caches::L3.capacity(), pipelined::caches::L3.nsets(), pipelined::caches::L3.nways(), pipelined::caches::L3.linesize());
 
-    for (uint32_t m = 2; m <= 32; m *= 2) for (uint32_t n = m/2; n <= m; n *= 2)
+    for (uint32_t m = 2; m <= 64; m *= 2) for (uint32_t n = m/2; n <= m; n *= 2)
     {
 	pipelined::zeromem();
 
@@ -41,8 +45,9 @@ int main
 	pipelined::mxv(0,0,0,0,0);
 	
 	if (pipelined::tracing) printf("\n");
-	printf("M = %6d, N = %6d : instructions = %6lu, cycles = %8lu, L1D accesses= %6lu, L1D misses = %6lu | ",
-		M, N, pipelined::counters::operations, pipelined::counters::cycles, pipelined::caches::L1D.accesses, pipelined::caches::L1D.misses);
+	printf("M = %4d, N = %4d : instr = %6lu, cyc = %8lu, L1D(access= %6lu, miss = %6lu), L2(miss = %6lu), L3(miss = %6lu) | ",
+		M, N, pipelined::counters::operations, pipelined::counters::cycles, pipelined::caches::L1D.accesses, pipelined::caches::L1D.misses,
+		pipelined::caches::L2.misses, pipelined::caches::L3.misses);
 	bool pass = true;
 	for (uint32_t i=0; i<M; i++)
 	{

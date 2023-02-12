@@ -49,6 +49,22 @@ namespace pipelined
 	    extern const u32	latency;
 	};
 
+	namespace L2
+	{
+	    extern const u32	nsets;
+	    extern const u32	nways;
+	    extern const u32	linesize;
+	    extern const u32	latency;
+	};
+
+	namespace L3
+	{
+	    extern const u32	nsets;
+	    extern const u32	nways;
+	    extern const u32	linesize;
+	    extern const u32	latency;
+	};
+
 	namespace MEM
 	{
 	    extern const u32	N;
@@ -249,10 +265,15 @@ namespace pipelined
 		bool		contains(u32 WA, u32 L, u32 &set, u32 &way);	// returns the set and way that contain the data (if true)
 		u8*		fill(u32 EA, u32 L);				// loads data in address range [EA, EA+L) into cache, returns a pointer to the data in cache
                 void            clear();                			// clear the cache
+		u32		lineaddr(u32 EA);				// returns the line address for effective address EA;
+		u32		offset(u32 EA);					// returns the offset within a line for effective address EA;
+		entry*		find(u32 EA);					// find the cache entry for the effective address EA;
         };
 
         extern cache L1D;
         extern cache L1I;
+        extern cache L2;
+        extern cache L3;
     };
 
     extern uint32_t     CIA;                    // current instruction address
@@ -461,7 +482,16 @@ namespace pipelined
 		u32	_idx;
 	    public:
 		lfd(fprnum FT, gprnum RA) { _FT = FT; _RA = RA; _latency = 0; }
-		u32 latency() { if(_latency) return _latency; u32 EA = GPR[_RA].data(); _latency = caches::L1D.contains(EA,8) ? params::L1::latency : params::MEM::latency; return _latency; }
+		u32 latency() 
+		{ 
+		    if(_latency) return _latency; 
+		    u32 EA = GPR[_RA].data(); 
+		    if      (caches::L1D.contains(EA,8))	_latency = params:: L1::latency;
+		    else if (caches:: L2.contains(EA,8))	_latency = params:: L2::latency;
+		    else if (caches:: L3.contains(EA,8)) 	_latency = params:: L3::latency;
+		    else  					_latency = params::MEM::latency; 
+		    return _latency; 
+		}
 		units::unit& unit() { return units::LDU; }
 		u64 target(u64 cycle) 
 		{ 
