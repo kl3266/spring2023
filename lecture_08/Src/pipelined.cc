@@ -198,89 +198,78 @@ namespace pipelined
 
 	entry*	cache::evict(u32 EA, u32 L, std::vector<u8> &M)
 	{
-	    u32 setix; u32 wayix; u32 offset = EA % linesize(); u32 lineaddr = EA / linesize();
-	    if (contains(EA, L, setix, wayix))
+	    u32 offset = EA % linesize(); 				// offset within a line
+	    u32 lineaddr = EA / linesize();				// line address
+            u32 setix = lineaddr % nsets();				// compute set index from line address
+
+	    // We need to find the LRU entry
+	    u64 lasttouch = counters::cycles;
+	    u32 lru = nways();
+	    for (u32 wayix = 0; wayix < nways(); wayix++)
 	    {
-		// This is a hit! It should not happen.
-		assert(false);
-		return 0;
-	    }
-	    else
-	    {
-	    	// This is a miss! We need to find the LRU entry
-                u64 lasttouch = counters::cycles;
-                u32 lru = nways();
-                for (wayix = 0; wayix < nways(); wayix++)
-                {
-                    if (!sets()[setix][wayix].valid)
-                    {
-                        // invalid entry, can use this one as the lru
-                        lru = wayix;
-                        break;
-                    }
-                    if (sets()[setix][wayix].touched <= lasttouch)
-                    {
-                        // older than current candidate - update
-                        lru = wayix;
-                        lasttouch = sets()[setix][wayix].touched;
-                    }
-                }
-                assert(lru < nways());
-		if (sets()[setix][lru].valid && sets()[setix][lru].modified)
+		if (!sets()[setix][wayix].valid)
 		{
-		    u32 addr = sets()[setix][lru].addr * linesize();
-		    for (u32 i=0; i<linesize(); i++) 
-			M[addr + i] = sets()[setix][lru].data[i];			// fill memory from the cache entry
+		    // invalid entry, can use this one as the lru
+		    lru = wayix;
+		    break;
 		}
-                sets()[setix][lru].valid = false;					// entry is now valid
-                sets()[setix][lru].modified = false;					// fresh entry
-		return &(sets()[setix][lru]);						// return the contents
+		if (sets()[setix][wayix].touched <= lasttouch)
+		{
+		    // older than current candidate - update
+		    lru = wayix;
+		    lasttouch = sets()[setix][wayix].touched;
+		}
 	    }
+	    assert(lru < nways());
+	    if (sets()[setix][lru].valid && sets()[setix][lru].modified)
+	    {
+		u32 addr = sets()[setix][lru].addr * linesize();
+		for (u32 i=0; i<linesize(); i++) 
+		    M[addr + i] = sets()[setix][lru].data[i];			// fill memory from the cache entry
+	    }
+	    sets()[setix][lru].valid = false;					// entry is now valid
+	    sets()[setix][lru].modified = false;				// fresh entry
+	    return &(sets()[setix][lru]);					// return the cache entry
 	}
 
 	entry*	cache::evict(u32 EA, u32 L, caches::entry &E)
 	{
-	    u32 setix; u32 wayix; u32 offset = EA % linesize(); u32 lineaddr = EA / linesize();
-	    if (contains(EA, L, setix, wayix))
+	    u32 offset = EA % linesize(); 				// offset within a line
+	    u32 lineaddr = EA / linesize();				// line address
+            u32 setix = lineaddr % nsets();				// compute set index from line address
+
+	    // We need to find the LRU entry
+	    u64 lasttouch = counters::cycles;
+	    u32 lru = nways();
+	    for (u32 wayix = 0; wayix < nways(); wayix++)
 	    {
-		// This is a hit! It should not happen.
-		assert(false);
-		return 0;
-	    }
-	    else
-	    {
-	    	// This is a miss! We need to find the LRU entry
-                u64 lasttouch = counters::cycles;
-                u32 lru = nways();
-                for (wayix = 0; wayix < nways(); wayix++)
-                {
-                    if (!sets()[setix][wayix].valid)
-                    {
-                        // invalid entry, can use this one as the lru
-                        lru = wayix;
-                        break;
-                    }
-                    if (sets()[setix][wayix].touched <= lasttouch)
-                    {
-                        // older than current candidate - update
-                        lru = wayix;
-                        lasttouch = sets()[setix][wayix].touched;
-                    }
-                }
-                assert(lru < nways());
-		if (sets()[setix][lru].valid && sets()[setix][lru].modified)
+		if (!sets()[setix][wayix].valid)
 		{
-		    u32 addr = sets()[setix][lru].addr * linesize();
-		    for (u32 i=0; i<linesize(); i++) 
-			E.data[i] = sets()[setix][lru].data[i];				// fill the target cache entry from this entry
-		    E.valid = sets()[setix][lru].valid;
-		    E.modified = sets()[setix][lru].modified;
-		    E.addr = sets()[setix][lru].addr;
+		    // invalid entry, can use this one as the lru
+		    lru = wayix;
+		    break;
 		}
-                sets()[setix][lru].valid = false;					// entry is now valid
-                sets()[setix][lru].modified = false;					// fresh entry
-		return &(sets()[setix][lru]);						// return the contents
+		if (sets()[setix][wayix].touched <= lasttouch)
+		{
+		    // older than current candidate - update
+		    lru = wayix;
+		    lasttouch = sets()[setix][wayix].touched;
+		}
 	    }
+	    assert(lru < nways());
+	    if (sets()[setix][lru].valid)
+	    {
+		u32 addr = sets()[setix][lru].addr * linesize();
+		for (u32 i=0; i<linesize(); i++) 
+		    E.data[i] = sets()[setix][lru].data[i];		// fill the target cache entry from this entry
+		E.valid = sets()[setix][lru].valid;
+		E.modified = sets()[setix][lru].modified;
+		E.addr = sets()[setix][lru].addr;
+		E.touched = sets()[setix][lru].touched;
+	    }
+	    sets()[setix][lru].valid = false;				// entry is now valid
+	    sets()[setix][lru].modified = false;			// fresh entry
+	    return &(sets()[setix][lru]);				// return the cache entry
 	}
 
 	u8*	cache::fill(u32 EA, u32 L, std::vector<u8> &M)
@@ -425,6 +414,7 @@ namespace pipelined
 		    // This is an L3 hit
 		    caches::L3.hit(EA, L);
 		    caches::L2.fill(EA, L, *(caches::L3.find(EA, L)));
+		    caches::L3.find(EA, L)->valid = false;
 		}
 		else
 		{
