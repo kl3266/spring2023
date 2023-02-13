@@ -2,7 +2,7 @@
 
 namespace pipelined
 {
-    bool	tracing = false;
+    bool	tracing = true;
     bool	operations::operation::first = true;
     bool	instructions::instruction::first = true;
 
@@ -451,7 +451,8 @@ namespace pipelined
     uint64_t    counters::operations = 0;       // operation counter
     uint64_t    counters::cycles = 0;           // cycle counter
     uint64_t    counters::lastissued = 0;       // last issue cycle
-    uint64_t    counters::lastfetched = 0;      // last fetch cycle
+    uint64_t    counters::lastfetched = 0;      // last fetch complete cycle
+    uint64_t    counters::lastfetch = 0;        // last fetch start cycle
 
     void zeromem()
     {
@@ -467,6 +468,7 @@ namespace pipelined
 	counters::cycles = 0;
 	counters::lastissued = 0;
 	counters::lastfetched = 0;
+	counters::lastfetch = 0;
 	PRF::next = 0;
 	for (u32 i=0; i<params::GPR::N; i++) GPR[i].idx() = PRF::next++;
 	for (u32 i=0; i<params::FPR::N; i++) FPR[i].idx() = PRF::next++;

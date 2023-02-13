@@ -102,7 +102,8 @@ namespace pipelined
 	extern u64	operations;
 	extern u64	cycles;
 	extern u64	lastissued;
-	extern u64	lastfetched;
+	extern u64	lastfetch;	// cycle the last fetch started
+	extern u64	lastfetched;	// cycle the last fetch completed
     };
 
     static u64 max(u64 a)			{ return a; }
@@ -700,6 +701,7 @@ namespace pipelined
 		u64		_fetched; 	// fetch cycle
 		u64		_decoded;	// decode cycle
 		u64		_dispatched;	// dispatch cycle
+		bool		_hit;		// L1I cache hit
 
 	    public:
 		instruction(u32 addr) { _addr = addr; }
@@ -713,25 +715,27 @@ namespace pipelined
 		{
 		    if (first)
 		    {
-			out << " instr # ,address ,          instruction ,    fetch ,   decode , dispatch ,      op # ,            operation ,     ready ,    issued ,  complete" << std::endl;
+			out << "instr # ,address ,          instruction ,   fetch ,  decode ,dispatch ,      op # ,            operation ,     ready ,    issued ,  complete" << std::endl;
 			first = false;
 		    }
 
 		    std::ios state(nullptr);
 		    state.copyfmt(out);
-		    out << std::setw( 8) << std::setfill('0') << _count     	<< " , ";
-		    out << "0x" << std::hex << std::setw( 4) << std::setfill('0') << _addr << std::dec << " , ";
+		    out << std::setw( 7) << std::setfill('0') << _count     	<< " , ";
+		    out << "0x" << std::hex << std::setw( 4) << std::setfill('0') << _addr << std::dec << (_hit ? '*' : ' ') << ", ";
 		    out << std::setw(20) << std::setfill(' ') << dasm()     	<< " , ";
-		    out << std::setw( 8) << std::setfill('0') << _fetched     	<< " , ";
-		    out << std::setw( 8) << std::setfill('0') << _decoded   	<< " , ";
-		    out << std::setw( 8) << std::setfill('0') << _dispatched   	<< " , ";
+		    out << std::setw( 7) << std::setfill('0') << _fetched     	<< " , ";
+		    out << std::setw( 7) << std::setfill('0') << _decoded   	<< " , ";
+		    out << std::setw( 7) << std::setfill('0') << _dispatched   	<< " , ";
 		    out.copyfmt(state);
 		}
 		void	fetch()
 		{ 
 		    u32 latency = caches::L1I.contains(_addr, 4) ? params::L1::latency : params::MEM::latency;
-		    _fetched = counters::lastfetched + latency;
+		    _hit = caches::L1I.contains(_addr, 4);
+		    _fetched = max(counters::lastfetch + latency, counters::lastfetched+1);
 		    counters::lastfetched = _fetched;
+		    counters::lastfetch++;
 		    caches::L1I.fill(_addr, 4, MEM);
 		}
 		void	decode()
