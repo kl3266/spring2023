@@ -101,7 +101,8 @@ namespace pipelined
 	extern u64	instructions;
 	extern u64	operations;
 	extern u64	cycles;
-	extern u64	lastissued;
+	extern u64	lastissued;	// cycle the last operation in program order issued
+	extern u64	lastcompleted;	// cycle the last operation in program order completed
 	extern u64	lastfetch;	// cycle the last fetch started
 	extern u64	lastfetched;	// cycle the last fetch completed
     };
@@ -369,6 +370,7 @@ namespace pipelined
 		    counters::cycles = std::max(cycle, minissue + latency()); 	// current cycle could advance to the end of this operation
 		    _complete = minissue + latency();
 		    counters::lastissued = minissue;				// update time of last issue
+		    counters::lastcompleted = _complete;			// update time of last completion
 		    if (tracing) output(std::cout);
 		    return issue(minissue);
 		}

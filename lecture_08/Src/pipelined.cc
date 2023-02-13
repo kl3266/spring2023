@@ -451,6 +451,7 @@ namespace pipelined
     uint64_t    counters::operations = 0;       // operation counter
     uint64_t    counters::cycles = 0;           // cycle counter
     uint64_t    counters::lastissued = 0;       // last issue cycle
+    uint64_t    counters::lastcompleted = 0;    // last complete cycle
     uint64_t    counters::lastfetched = 0;      // last fetch complete cycle
     uint64_t    counters::lastfetch = 0;        // last fetch start cycle
 
@@ -506,7 +507,9 @@ namespace pipelined
 	    inst->decode();	// decode time
 	    inst->dispatch();	// dispatch time
 	    if (tracing) inst->output(std::cout);
-	    return inst->process(); 
+	    bool taken = inst->process();
+	    if (taken) counters::lastfetch = counters::lastcompleted;
+	    return taken;
 	}
     };
 };
