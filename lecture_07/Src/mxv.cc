@@ -20,9 +20,7 @@ loopi:
 	addi(r8, r5, 0);
 	addi(r9, r7, 0);
 	zd(f0);
-
-loopj:
-	cmpi(r9,0);
+loopj:  cmpi(r9,0);
 	beq(nexti);
 	lfd(f1, r8);
 	lfd(f2, r4);
@@ -32,9 +30,7 @@ loopj:
 	addi(r4, r4, 8);
 	addi(r9, r9, -1);
 	b(loopj);
-
-nexti:
-	stfd(f0, r3);
+nexti:  stfd(f0, r3);
 	addi(r3, r3, 8);
 	addi(r6, r6, -1);
 	b(loopi);
