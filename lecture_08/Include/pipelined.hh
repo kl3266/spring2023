@@ -605,6 +605,19 @@ namespace pipelined
 		std::string dasm() { std::string str = "beq (" + std::to_string(_BD) + ")"; return str; }
 	};
 
+	class bne : public operation
+	{
+	    private:
+		i16	_BD;
+	    public:
+		bne(i16 BD) { _BD = BD; }
+		bool issue(u64 cycle) { if (!flags.EQ) { NIA = CIA + _BD; return true; } else return false; }
+		units::unit& unit() { return units::BRU; }
+		u64 target(u64 cycle) { return cycle; }
+		u64 ready() { return 0; }
+		std::string dasm() { std::string str = "bne (" + std::to_string(_BD) + ")"; return str; }
+	};
+
 	class zd : public operation
 	{
 	    private:
@@ -811,6 +824,18 @@ namespace pipelined
 		bool process() { return operations::process(new operations::beq(_BD), dispatched()); }
 		static bool execute(i16 BD, const char *label, u32 line) { return instructions::process(new beq(BD, label, 4*line)); }
 		std::string dasm() { std::string str = "beq (" + std::string(_label) + ")"; return str; }
+	};
+
+	class bne : public instruction
+	{
+	    private:
+		i16		_BD;
+		const char*	_label;
+	    public:
+		bne(i16 BD, const char *label, u32 addr) : instruction(addr) { _BD = BD; _label = label; }
+		bool process() { return operations::process(new operations::bne(_BD), dispatched()); }
+		static bool execute(i16 BD, const char *label, u32 line) { return instructions::process(new bne(BD, label, 4*line)); }
+		std::string dasm() { std::string str = "bne (" + std::string(_label) + ")"; return str; }
 	};
 
 	class b : public instruction

@@ -6,6 +6,7 @@
 // 1. Branch Facility
 #define b(X)			if (instructions::b::execute(0, #X, __LINE__)) goto X;
 #define beq(X)			if (instructions::beq::execute(0, #X, __LINE__)) goto X;
+#define bne(X)			if (instructions::bne::execute(0, #X, __LINE__)) goto X;
 
 // 2. Fixed-point Facility
 
