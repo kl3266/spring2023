@@ -2,7 +2,7 @@
 
 namespace pipelined
 {
-    bool	tracing = true;
+    bool	tracing = false;
     bool	operations::operation::first = true;
     bool	instructions::instruction::first = true;
 
@@ -81,6 +81,23 @@ namespace pipelined
 		idx = PRF::next++;
 	    } while (PRF::R[idx].busy());
 	    PRF::R[idx].busy() = true;
+	    return idx;
+	}
+    };
+
+    namespace VRF
+    {
+	u32	find_next()
+	{
+	    u32 idx;
+	    do						// find a first candidate
+	    {
+		VRF::next %= params::VRF::N;
+		idx = VRF::next++;
+	    } while (VRF::V[idx].busy());
+	    for (u32 i=0; i<params::VRF::N; i++)	// look for a possibly better candidate
+		if ((!(VRF::V[i].busy())) && (VRF::V[i].used() < VRF::V[idx].used())) idx = i;
+	    VRF::V[idx].busy() = true;
 	    return idx;
 	}
     };
@@ -467,6 +484,15 @@ namespace pipelined
     {
 	u32 offset = EA % data.size();
 	*((u8*)(data.data() + offset)) = B;
+	modified = true;
+    }
+
+    void pipelined::caches::entry::store(u32 EA, const pipelined::vector &V)
+    {
+	u32 offset = EA % data.size();
+	assert(offset == 0);
+	assert(sizeof(V) == data.size());
+	*((vector*)(data.data() + offset)) = V;
 	modified = true;
     }
 

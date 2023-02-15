@@ -158,6 +158,26 @@ namespace pipelined
         f7 = 7
     } fprnum;                                   // valid FPR numbers
 
+    typedef enum
+    {
+        v0  =  0,
+        v1  =  1,
+        v2  =  2,
+        v3  =  3,
+        v4  =  4,
+        v5  =  5,
+        v6  =  6,
+        v7  =  7,
+        v8  =  8,
+        v9  =  9,
+	v10 = 10,
+	v11 = 11,
+	v12 = 12,
+	v13 = 13,
+	v14 = 14,
+	v15 = 15
+    } vrnum;                                    // valid VR numbers
+
     typedef struct
     {
         bool    LT;                             // less than
@@ -291,7 +311,8 @@ namespace pipelined
 		entry(u32 linesize) : data(linesize) { }	// creates a cache entry with linesize bytes of storage
 		entry()	{ }					// default constructor, to be filled later
 		void store	(u32 EA, double D);		// stores double-precision value D in address EA
-		void store	(u32 EA, u8	B);		// streos byte B in address EA
+		void store	(u32 EA, u8	B);		// store byte B in address EA
+		void store	(u32 EA, const vector &V);	// store vector V in address EA
         };
 
         typedef std::vector<entry>      set;
@@ -632,6 +653,79 @@ namespace pipelined
 		std::string dasm() { std::string str = "stfd (p" + std::to_string(FPR[_FS].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
 	};
 
+	class vlb : public operation
+	{
+	    private:
+		vrnum	_VT;
+		gprnum	_RA;
+		u32	_latency;
+		u32	_idx;
+	    public:
+		vlb(vrnum VT, gprnum RA) { _VT = VT; _RA = RA; _latency = 0; }
+		u32 latency() 
+		{ 
+		    if(_latency) return _latency; 
+		    u32 EA = GPR[_RA].data(); 
+		    if      (caches::L1D.contains(EA,16))	_latency = params:: L1::latency;
+		    else if (caches:: L2.contains(EA,16))	_latency = params:: L2::latency;
+		    else if (caches:: L3.contains(EA,16)) 	_latency = params:: L3::latency;
+		    else  					_latency = params::MEM::latency; 
+		    return _latency; 
+		}
+		units::unit& unit() { return units::LDU; }
+		u64 target(u64 cycle) 
+		{ 
+		    VR[_VT].busy() = false;
+		    _idx = VRF::find_next();
+		    return max(cycle, VRF::V[_idx].used());
+		}
+		bool issue(u64 cycle)
+		{
+		    GPR[_RA].used(cycle);
+		    u32 EA = GPR[_RA].data(); 			// compute effective address of load
+		    u8* data = load(EA,16);			// fill the cache with the line, if not already there
+		    VR[_VT].idx()   = _idx;
+		    for (u32 i=0; i<16; i++) VR[_VT].data().byte[i] = *((u8*)data + i);
+		    VR[_VT].ready() = cycle + latency(); 
+		    return false; 
+		}
+		u64 ready() { return max(GPR[_RA].ready()); }
+		std::string dasm() { std::string str = "vlb (q" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
+	};
+
+	class vstb : public operation
+	{
+	    private:
+		vrnum	_VS;
+		gprnum	_RA;
+		u32	_latency;
+	    public:
+		vstb(vrnum VS, gprnum RA) { _VS = VS; _RA = RA; _latency = 0; }
+		bool issue(u64 cycle) 
+		{
+		    GPR[_RA].used(cycle);
+		    uint32_t EA = GPR[_RA].data();				// compute effective address of store
+		    u8* data = load(EA,16);					// fill the cache with the line, if not already there
+		    caches::L1D.find(EA,16)->store(EA,VR[_VS].data()); 		// write data to L1 cache
+		    caches::L2 .find(EA,16)->store(EA,VR[_VS].data());		// write to L2 as well, since L1 is write-through!
+		    return false; 
+		}
+		u32 latency() 
+		{ 
+		    if(_latency) return _latency; 
+		    u32 EA = GPR[_RA].data(); 
+		    if      (caches::L1D.contains(EA,16))	_latency = params:: L1::latency;
+		    else if (caches:: L2.contains(EA,16))	_latency = params:: L2::latency;
+		    else if (caches:: L3.contains(EA,16)) 	_latency = params:: L3::latency;
+		    else  					_latency = params::MEM::latency; 
+		    return _latency; 
+		}
+		units::unit& unit() { return units::STU; }
+		u64 target(u64 cycle) { return cycle; }
+		u64 ready() { return max(GPR[_RA].ready(), VR[_VS].ready()); }
+		std::string dasm() { std::string str = "vstb (q" + std::to_string(VR[_VS].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
+	};
+
 	class b : public operation
 	{
 	    private:
@@ -669,6 +763,19 @@ namespace pipelined
 		u64 target(u64 cycle) { return cycle; }
 		u64 ready() { return 0; }
 		std::string dasm() { std::string str = "bne (" + std::to_string(_BD) + ")"; return str; }
+	};
+
+	class blt : public operation
+	{
+	    private:
+		i16	_BD;
+	    public:
+		blt(i16 BD) { _BD = BD; }
+		bool issue(u64 cycle) { if (flags.LT) { NIA = CIA + _BD; return true; } else return false; }
+		units::unit& unit() { return units::BRU; }
+		u64 target(u64 cycle) { return cycle; }
+		u64 ready() { return 0; }
+		std::string dasm() { std::string str = "blt (" + std::to_string(_BD) + ")"; return str; }
 	};
 
 	class zd : public operation
@@ -867,6 +974,30 @@ namespace pipelined
 		std::string dasm() { std::string str = "stb (r" + std::to_string(_RS) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
 
+	class vlb : public instruction
+	{
+	    private:
+		vrnum 	_VT;
+		gprnum	_RA;
+	    public:
+		vlb(vrnum VT, gprnum RA, u32 addr) : instruction(addr) { _VT = VT; _RA = RA; }
+		bool process() { return operations::process(new operations::vlb(_VT, _RA), dispatched()); }
+		static bool execute(vrnum VT, gprnum RA, u32 line) { return instructions::process(new vlb(VT, RA, 4*line)); }
+		std::string dasm() { std::string str = "vlb (v" + std::to_string(_VT) + ", r" + std::to_string(_RA) + ")"; return str; }
+	};
+
+	class vstb : public instruction
+	{
+	    private:
+		vrnum	_VS;
+		gprnum	_RA;
+	    public:
+		vstb(vrnum VS, gprnum RA, u32 addr) : instruction(addr) { _VS = VS, _RA = RA; }
+		bool process() { return operations::process(new operations::vstb(_VS, _RA), dispatched()); }
+		static bool execute(vrnum VS, gprnum RA, u32 line) { return instructions::process(new vstb(VS, RA, 4*line)); }
+		std::string dasm() { std::string str = "vstb (v" + std::to_string(_VS) + ", r" + std::to_string(_RA) + ")"; return str; }
+	};
+
 	class beq : public instruction
 	{
 	    private:
@@ -889,6 +1020,18 @@ namespace pipelined
 		bool process() { return operations::process(new operations::bne(_BD), dispatched()); }
 		static bool execute(i16 BD, const char *label, u32 line) { return instructions::process(new bne(BD, label, 4*line)); }
 		std::string dasm() { std::string str = "bne (" + std::string(_label) + ")"; return str; }
+	};
+
+	class blt : public instruction
+	{
+	    private:
+		i16		_BD;
+		const char*	_label;
+	    public:
+		blt(i16 BD, const char *label, u32 addr) : instruction(addr) { _BD = BD; _label = label; }
+		bool process() { return operations::process(new operations::blt(_BD), dispatched()); }
+		static bool execute(i16 BD, const char *label, u32 line) { return instructions::process(new blt(BD, label, 4*line)); }
+		std::string dasm() { std::string str = "blt (" + std::string(_label) + ")"; return str; }
 	};
 
 	class b : public instruction
@@ -926,7 +1069,6 @@ namespace pipelined
 		static bool execute(fprnum FT, fprnum FA, fprnum FB, u32 line) { return instructions::process(new fmul(FT, FA, FB, 4*line)); }
 		std::string dasm() { std::string str = "fmul (f" + std::to_string(_FT) + ", f" + std::to_string(_FA) + ", f" + std::to_string(_FB) + ")"; return str; }
 	};
-
 
 	class fadd : public instruction
 	{

@@ -7,6 +7,7 @@
 #define b(X)			if (instructions::b::execute(0, #X, __LINE__)) goto X;
 #define beq(X)			if (instructions::beq::execute(0, #X, __LINE__)) goto X;
 #define bne(X)			if (instructions::bne::execute(0, #X, __LINE__)) goto X;
+#define blt(X)			if (instructions::blt::execute(0, #X, __LINE__)) goto X;
 
 // 2. Fixed-point Facility
 
@@ -30,5 +31,17 @@
 #define zd(FT)			instructions::zd::execute(FT, __LINE__)
 #define fmul(FT, FA, FB)	instructions::fmul::execute(FT, FA, FB, __LINE__)
 #define fadd(FT, FA, FB)	instructions::fadd::execute(FT, FA, FB, __LINE__)
+
+// 4. Vector Facility
+
+// 4.1 Load/Store instructions
+#define vlb(VT, RA)		instructions::vlb  ::execute(VT, RA, __LINE__)
+#define vstb(VS, RA)		instructions::vstb ::execute(VS, RA, __LINE__)
+#define vlfd(VT, RA)		instructions::vlfd ::execute(VT, RA, __LINE__)
+#define vstfd(VS, RA)		instructions::vstfd::execute(VS, RA, __LINE__)
+
+// 4.2. Arithmetic instructions
+#define vfmuldp(VT, VA, VB)	instructions::vfmul::execute(VT, VA, VB, __LINE__)
+#define vfadddp(VT, VA, VB)	instructions::vfadd::execute(VT, VA, VB, __LINE__)
 
 #endif
