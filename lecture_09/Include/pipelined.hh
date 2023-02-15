@@ -313,6 +313,7 @@ namespace pipelined
 		void store	(u32 EA, double D);		// stores double-precision value D in address EA
 		void store	(u32 EA, u8	B);		// store byte B in address EA
 		void store	(u32 EA, const vector &V);	// store vector V in address EA
+		void store	(u32 EA, const u8 (&V)[16]);	// store bytes of vector V in address EA
         };
 
         typedef std::vector<entry>      set;
@@ -706,8 +707,8 @@ namespace pipelined
 		    GPR[_RA].used(cycle);
 		    uint32_t EA = GPR[_RA].data();				// compute effective address of store
 		    u8* data = load(EA,16);					// fill the cache with the line, if not already there
-		    caches::L1D.find(EA,16)->store(EA,VR[_VS].data()); 		// write data to L1 cache
-		    caches::L2 .find(EA,16)->store(EA,VR[_VS].data());		// write to L2 as well, since L1 is write-through!
+		    caches::L1D.find(EA,16)->store(EA,VR[_VS].data().byte);	// write data to L1 cache
+		    caches::L2 .find(EA,16)->store(EA,VR[_VS].data().byte);	// write to L2 as well, since L1 is write-through!
 		    return false; 
 		}
 		u32 latency() 
