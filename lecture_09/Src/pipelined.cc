@@ -12,31 +12,36 @@ namespace pipelined
     const u32 	params::L1::latency = 2;
     const u32	params::L1::nsets = 16;
     const u32 	params::L1::nways = 4;
-    const u32	params::L1::linesize = 8;
+    const u32	params::L1::linesize = 16;
 
     const u32 	params::L2::latency = 4;
     const u32	params::L2::nsets = 64;
     const u32 	params::L2::nways = 4;
-    const u32	params::L2::linesize = 8;
+    const u32	params::L2::linesize = 16;
 
     const u32 	params::L3::latency = 8;
     const u32	params::L3::nsets = 64;
     const u32 	params::L3::nways = 16;
-    const u32	params::L3::linesize = 8;
+    const u32	params::L3::linesize = 16;
 
     const u32	params::GPR::N = 16;
     const u32 	params::FPR::N = 8;
     const u32	params::PRF::N = 64;
+    const u32	params::VRF::N = 128;
+    const u32	params::VR::N = 32;
 
     const u32	params::Backend::maxissue = 1;
     const u32	params::Frontend::DECODE::latency = 1;
     const u32	params::Frontend::DISPATCH::latency = 1;
 
     std::vector<u8>		MEM(params::MEM::N);
-    std::vector<reg<u32>>	GPR(params::GPR::N);
-    std::vector<reg<double>>	FPR(params::FPR::N);
-    std::vector<preg<u64>>	PRF::R(params::PRF::N);
+    std::vector<reg<u32> >	GPR(params::GPR::N);
+    std::vector<reg<double> >	FPR(params::FPR::N);
+    std::vector<preg<u64> >	PRF::R(params::PRF::N);
     u32 			PRF::next = 0;
+    std::vector<vreg>		VR(params::VR::N);
+    std::vector<preg<vector> > 	VRF::V(params::VRF::N);
+    u32				VRF::next = 0;
 
     units::unit			units::LDU;
     units::unit			units::STU;
@@ -494,6 +499,7 @@ namespace pipelined
 	counters::lastfetched = 0;
 	counters::lastfetch = 0;
 	PRF::next = 0;
+	VRF::next = 0;
 	for (u32 i=0; i<params::GPR::N; i++) GPR[i].idx() = PRF::next++;
 	for (u32 i=0; i<params::FPR::N; i++) FPR[i].idx() = PRF::next++;
 	for (u32 i=0; i<params::PRF::N; i++) PRF::R[i].ready() = 0;
@@ -503,6 +509,12 @@ namespace pipelined
 	for (u32 i=0; i<params::GPR::N; i++) GPR[i].busy() = true;
 	for (u32 i=0; i<params::FPR::N; i++) FPR[i].ready() = 0;
 	for (u32 i=0; i<params::FPR::N; i++) FPR[i].busy() = true;
+	for (u32 i=0; i<params::VR::N;  i++) VR[i].idx() = VRF::next++;
+	for (u32 i=0; i<params::VRF::N; i++) VRF::V[i].ready() = 0;
+	for (u32 i=0; i<params::VRF::N; i++) VRF::V[i].busy() = false;
+	for (u32 i=0; i<params::VRF::N; i++) VRF::V[i].used() = 0;
+	for (u32 i=0; i<params::VR::N;  i++) VR[i].ready() = 0;
+	for (u32 i=0; i<params::VR::N;  i++) VR[i].busy() = true;
 	units::FXU.clear();
 	units::FPU.clear();
 	units::LDU.clear();

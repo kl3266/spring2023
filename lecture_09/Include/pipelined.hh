@@ -14,10 +14,14 @@
 namespace pipelined
 {
     typedef uint8_t	u8;
+    typedef uint16_t	u16;
     typedef uint32_t	u32;
     typedef uint64_t	u64;
 
+    typedef int8_t	i8;
     typedef int16_t	i16;
+    typedef int32_t	i32;
+    typedef int64_t	i64;
 
     typedef float	fp32;
     typedef double	fp64;
@@ -39,6 +43,16 @@ namespace pipelined
 	namespace FPR
 	{
 	    extern const u32	N;
+	};
+
+	namespace VR 
+	{
+	    extern const u32	N;
+	};
+
+	namespace VRF
+	{
+	    extern const u32 	N;
 	};
 
 	namespace L1
@@ -174,7 +188,7 @@ namespace pipelined
 
     namespace PRF
     {
-	extern std::vector<preg<u64>>	R;	// physical register file (for all registers)
+	extern std::vector<preg<u64> >	R;	// physical register file (for all scalar registers)
 	extern u32			next;	// next physical register to use				
 
 	u32	find_first();
@@ -182,7 +196,27 @@ namespace pipelined
 	u32	find_next();
     };
 
-    template<typename T> class reg		// an architected register
+    union vector
+    {
+	u8	byte[16];
+	u16	half[8];
+	u32	word[4];
+	u64	dword[2];
+	float	sp[4];
+	double	dp[2];
+
+	vector&	operator=(int v) { for (u32 i=0; i<16; i++) byte[i] = v; return *this; }
+    };
+
+    namespace VRF
+    {
+	extern std::vector<preg<vector> >	V;	// physical register file for vectors
+	extern u32				next;	// next physical vector register to use
+
+	u32	find_next();
+    };
+
+    template<typename T> class reg	// an architected register
     {
 	private:
 	    u32 _idx;			// index into physical register file
@@ -199,9 +233,27 @@ namespace pipelined
 	    u32& idx()			{ return _idx; }
     };
 
+    class vreg				// an architected vector register
+    {
+	private:
+	    u32 _idx;			// index into physical register file
+	public:
+	    vreg()			{ assert(sizeof(vector) <= VRF::V[0].size()); assert(VRF::next < params::VRF::N); _idx = VRF::next++; }
+	    const vector& data() const 	{ return VRF::V[_idx].data(); }
+	    vector& data() 		{ return VRF::V[_idx].data(); }
+	    const u64& ready() const 	{ return VRF::V[_idx].ready(); }
+	    u64& ready()		{ return VRF::V[_idx].ready(); }
+	    const bool& busy() const 	{ return VRF::V[_idx].busy(); }
+	    bool& busy()		{ return VRF::V[_idx].busy(); }
+	    void used(u64 cycle)	{ return VRF::V[_idx].used(cycle); }
+	    const u32& idx() const	{ return _idx; }
+	    u32& idx()			{ return _idx; }
+    };
+
     extern std::vector<u8>		MEM;
-    extern std::vector<reg<u32>>	GPR;
-    extern std::vector<reg<double>>	FPR;
+    extern std::vector<reg<u32> >	GPR;
+    extern std::vector<reg<double> >	FPR;
+    extern std::vector<vreg>		VR;
     extern flags_t			flags;
 
     namespace units
