@@ -276,6 +276,7 @@ namespace pipelined
 		entry*		find(u32 EA, u32 L);				// find the cache entry for the effective address range [EA, EA+L)
 		entry*		evict(u32 EA, u32 L, std::vector<u8> &M);	// free up a cache entry to store address range [EA, EA+L) by evicting to memory
 		entry*		evict(u32 EA, u32 L, entry &E);			// free up a cache entry to store address range [EA, EA+L) by evicting to another cache
+		entry*		evict(u32 EA, u32 L);				// evict a cache entry with address range [EA, EA+L) to oblivion (for write-through cache only)
 		void		access(u32 EA, u32 L);				// count number of accesses
 		void		hit(u32 EA, u32 L);				// count number of hits
 		void		miss(u32 EA, u32 L);				// count number of misses

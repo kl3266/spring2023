@@ -196,6 +196,27 @@ namespace pipelined
 	    else 				return 0;
 	}
 
+	entry*	cache::evict(u32 EA, u32 L)
+	{
+	    u32 offset = EA % linesize(); 				// offset within a line
+	    u32 lineaddr = EA / linesize();				// line address
+            u32 setix = lineaddr % nsets();				// compute set index from line address
+
+	    // We need to find the matching entry
+	    u32 wayix;
+	    for (wayix = 0; wayix < nways(); wayix++)
+		if (sets()[setix][wayix].valid && sets()[setix][wayix].addr == lineaddr) break;
+
+	    // invalidate the entry, if found
+	    if (wayix < nways())
+	    {
+		sets()[setix][wayix].valid = false;			// entry is now invalid
+		sets()[setix][wayix].modified = false;			// fresh entry
+		return &(sets()[setix][wayix]);				// return the cache entry
+	    }
+	    else return 0;
+	}
+
 	entry*	cache::evict(u32 EA, u32 L, std::vector<u8> &M)
 	{
 	    u32 offset = EA % linesize(); 				// offset within a line
@@ -227,13 +248,14 @@ namespace pipelined
 		for (u32 i=0; i<linesize(); i++) 
 		    M[addr + i] = sets()[setix][lru].data[i];			// fill memory from the cache entry
 	    }
-	    sets()[setix][lru].valid = false;					// entry is now valid
+	    sets()[setix][lru].valid = false;					// entry is now invalid
 	    sets()[setix][lru].modified = false;				// fresh entry
 	    return &(sets()[setix][lru]);					// return the cache entry
 	}
 
 	entry*	cache::evict(u32 EA, u32 L, caches::entry &E)
 	{
+	    assert(!E.valid);						// target cache entry should be invalid
 	    u32 offset = EA % linesize(); 				// offset within a line
 	    u32 lineaddr = EA / linesize();				// line address
             u32 setix = lineaddr % nsets();				// compute set index from line address
@@ -267,7 +289,7 @@ namespace pipelined
 		E.addr = sets()[setix][lru].addr;
 		E.touched = sets()[setix][lru].touched;
 	    }
-	    sets()[setix][lru].valid = false;				// entry is now valid
+	    sets()[setix][lru].valid = false;				// entry is now invalid
 	    sets()[setix][lru].modified = false;			// fresh entry
 	    return &(sets()[setix][lru]);				// return the cache entry
 	}
@@ -406,6 +428,7 @@ namespace pipelined
 		// let us free up space in L3 before we evict L2
 		caches::entry *empty = caches::L3.evict(EA, L, MEM);	// evict a line from L3 to memory
 		caches::L2.evict(EA, L, *empty);			// evict a line from L2 to L3
+		if (empty->valid) caches::L1D.evict(EA, L);		// if a valid entry was evicted from L2, must be evicted from L1
 
 		// Now, let us see if we find the data in L3
 		caches::L3.access(EA, L);
