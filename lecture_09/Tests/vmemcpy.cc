@@ -23,8 +23,9 @@ int main
     for (uint32_t n = 1; n<=N; n *= 2)
     {
 	pipelined::zeroctrs();
+	for (uint32_t i=0; i<n; i++) pipelined::MEM[N+i] = 0;
 
-	pipelined::GPR[3].data() = 1024;
+	pipelined::GPR[3].data() = N;
 	pipelined::GPR[4].data() = 0;
 	pipelined::GPR[5].data() = n;
 	
