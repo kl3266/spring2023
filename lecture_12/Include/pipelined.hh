@@ -820,7 +820,7 @@ namespace pipelined
 		bool issue(u64 cycle)
 		{
 		    GPR[_RA].used(cycle);
-		    vector RES = {0}; for (u32 i=0; i<min(16U, GPR[_RA].data()); i++) RES.byte[i] = 0; 
+		    vector RES = {0}; for (u32 i=0; i<min(16U, GPR[_RA].data()); i++) RES.byte[i] = 1; 
 		    VR[_VT].idx()   = _idx; 
 		    VR[_VT].data()  = RES;
 		    VR[_VT].ready() = cycle + latency(); 
@@ -1085,7 +1085,7 @@ namespace pipelined
 		gprnum	_RB;
 	    public:
 		add(gprnum RT, gprnum RA, gprnum RB, u32 addr) : instruction(addr) { _RT = RT; _RA = RA; _RB = RB; }
-		bool process() { return operations::process(new operations::add(_RT, _RA, _RA), dispatched()); }
+		bool process() { return operations::process(new operations::add(_RT, _RA, _RB), dispatched()); }
 		static bool execute(gprnum RT, gprnum RA, gprnum RB, u32 line) { return instructions::process(new add(RT, RA, RB, 4*line)); }
 		std::string dasm() { std::string str = "add (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", r" + std::to_string(_RB) + ")"; return str; }
 	};
@@ -1098,7 +1098,7 @@ namespace pipelined
 		gprnum	_RB;
 	    public:
 		sub(gprnum RT, gprnum RA, gprnum RB, u32 addr) : instruction(addr) { _RT = RT; _RA = RA; _RB = RB; }
-		bool process() { return operations::process(new operations::sub(_RT, _RA, _RA), dispatched()); }
+		bool process() { return operations::process(new operations::sub(_RT, _RA, _RB), dispatched()); }
 		static bool execute(gprnum RT, gprnum RA, gprnum RB, u32 line) { return instructions::process(new sub(RT, RA, RB, 4*line)); }
 		std::string dasm() { std::string str = "sub (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", r" + std::to_string(_RB) + ")"; return str; }
 	};
