@@ -17,13 +17,15 @@
 
 // 2.2. Arithmetic instructions
 #define addi(RT, RA, SI)	instructions::addi::execute(RT, RA, SI, __LINE__)
+#define add(RT, RA, RB)		instructions::add ::execute(RT, RA, RB, __LINE__)
+#define sub(RT, RA, RB)		instructions::sub ::execute(RT, RA, RB, __LINE__)
 
 // 2.3. Compare instructions
 #define cmpi(RA, SI)		instructions::cmpi::execute(RA, SI, __LINE__)
 
 // 3. Floating-point Facility
 
-// 3.1 Load/Store instructions
+// 3.1. Load/Store instructions
 #define lfd(FT, RA)		instructions::lfd::execute(FT, RA, __LINE__)
 #define stfd(FS, RA)		instructions::stfd::execute(FS, RA, __LINE__)
 
@@ -34,14 +36,18 @@
 
 // 4. Vector Facility
 
-// 4.1 Load/Store instructions
-#define vlb(VT, RA)		instructions::vlb  ::execute(VT, RA, __LINE__)
-#define vstb(VS, RA)		instructions::vstb ::execute(VS, RA, __LINE__)
+// 4.1. Load/Store instructions
+#define vlb(VT, RA, VM)		instructions::vlb  ::execute(VT, RA, VM, __LINE__)
+#define vstb(VS, RA, VM)	instructions::vstb ::execute(VS, RA, VM, __LINE__)
 #define vlfd(VT, RA)		instructions::vlfd ::execute(VT, RA, __LINE__)
 #define vstfd(VS, RA)		instructions::vstfd::execute(VS, RA, __LINE__)
 
 // 4.2. Arithmetic instructions
 #define vfmuldp(VT, VA, VB)	instructions::vfmul::execute(VT, VA, VB, __LINE__)
 #define vfadddp(VT, VA, VB)	instructions::vfadd::execute(VT, VA, VB, __LINE__)
+
+// 4.3. Mask instructions
+#define vmaskb(VM, RA)		instructions::vmaskb ::execute(VM, RA, __LINE__)
+#define vpopcnt(RT, VM)		instructions::vpopcnt::execute(RT, VM, __LINE__)
 
 #endif

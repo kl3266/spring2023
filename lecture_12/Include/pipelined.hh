@@ -303,6 +303,7 @@ namespace pipelined
 	extern unit	FXU;	// fixed-point unit
 	extern unit	FPU;	// floating-point unit
 	extern unit	BRU;	// branch unit
+	extern unit	VU;	// vector unit
     };
 
     namespace caches
@@ -494,6 +495,64 @@ namespace pipelined
 		std::string dasm() { std::string str = "addi (p" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
 
+	class add : public operation
+	{
+	    private:
+		gprnum	_RT;
+		gprnum 	_RA;
+		gprnum 	_RB;
+		u32	_idx;
+	    public:
+		add(gprnum RT, gprnum RA, gprnum RB) { _RT = RT; _RA = RA, _RB = RB; }
+		units::unit& unit() { return units::FXU; }
+		u64 target(u64 cycle) 
+		{ 
+		    GPR[_RT].busy() = false;
+		    _idx = PRF::find_next();
+		    return max(cycle, PRF::R[_idx].used());
+		}
+		bool issue(u64 cycle)
+		{
+		    GPR[_RA].used(cycle);
+		    u32 RES = GPR[_RA].data() + GPR[_RB].data(); 
+		    GPR[_RT].idx()   = _idx; 
+		    GPR[_RT].data()  = RES;
+		    GPR[_RT].ready() = cycle + latency(); 
+		    return false; 
+		}
+		u64 ready() { return max(GPR[_RA].ready(), GPR[_RB].ready()); }
+		std::string dasm() { std::string str = "add (p" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ", p" + std::to_string(GPR[_RB].idx()) + ")"; return str; }
+	};
+
+	class sub : public operation
+	{
+	    private:
+		gprnum	_RT;
+		gprnum 	_RA;
+		gprnum 	_RB;
+		u32	_idx;
+	    public:
+		sub(gprnum RT, gprnum RA, gprnum RB) { _RT = RT; _RA = RA, _RB = RB; }
+		units::unit& unit() { return units::FXU; }
+		u64 target(u64 cycle) 
+		{ 
+		    GPR[_RT].busy() = false;
+		    _idx = PRF::find_next();
+		    return max(cycle, PRF::R[_idx].used());
+		}
+		bool issue(u64 cycle)
+		{
+		    GPR[_RA].used(cycle);
+		    u32 RES = GPR[_RA].data() - GPR[_RB].data(); 
+		    GPR[_RT].idx()   = _idx; 
+		    GPR[_RT].data()  = RES;
+		    GPR[_RT].ready() = cycle + latency(); 
+		    return false; 
+		}
+		u64 ready() { return max(GPR[_RA].ready(), GPR[_RB].ready()); }
+		std::string dasm() { std::string str = "sub (p" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ", p" + std::to_string(GPR[_RB].idx()) + ")"; return str; }
+	};
+
 	class cmpi : public operation
 	{
 	    private:
@@ -558,7 +617,7 @@ namespace pipelined
 		}
 		u64 ready() { return max(GPR[_RA].ready()); }
 		std::string dasm() { std::string str = "lbz (p" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
-		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,1, ready) ? ready : 0; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1D.contains(EA,1, ready) ? ready : 0; }
 	};
 
 	class stb : public operation
@@ -592,7 +651,7 @@ namespace pipelined
 		u64 target(u64 cycle) { return cycle; }
 		u64 ready() { return max(GPR[_RA].ready(), GPR[_RS].ready()); }
 		std::string dasm() { std::string str = "stb (p" + std::to_string(GPR[_RS].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
-		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,1, ready) ? ready : 0; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1D.contains(EA,1, ready) ? ready : 0; }
 	};
 
 	class lfd : public operation
@@ -634,7 +693,7 @@ namespace pipelined
 		}
 		u64 ready() { return max(GPR[_RA].ready()); }
 		std::string dasm() { std::string str = "lfd (p" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
-		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,8, ready) ? ready : 0; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1D.contains(EA,8, ready) ? ready : 0; }
 	};
 
 	class stfd : public operation
@@ -668,7 +727,7 @@ namespace pipelined
 		u64 target(u64 cycle) { return cycle; }
 		u64 ready() { return max(GPR[_RA].ready(), FPR[_FS].ready()); }
 		std::string dasm() { std::string str = "stfd (p" + std::to_string(FPR[_FS].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
-		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,8, ready) ? ready : 0; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1D.contains(EA,8, ready) ? ready : 0; }
 	};
 
 	class vlb : public operation
@@ -676,10 +735,11 @@ namespace pipelined
 	    private:
 		vrnum	_VT;
 		gprnum	_RA;
+		vrnum	_VM;
 		u32	_latency;
 		u32	_idx;
 	    public:
-		vlb(vrnum VT, gprnum RA) { _VT = VT; _RA = RA; _latency = 0; }
+		vlb(vrnum VT, gprnum RA, vrnum VM) { _VT = VT; _RA = RA; _VM = VM; _latency = 0; }
 		u32 latency() 
 		{ 
 		    if(_latency) return _latency; 
@@ -707,9 +767,9 @@ namespace pipelined
 		    VR[_VT].ready() = cycle + latency(); 
 		    return false; 
 		}
-		u64 ready() { return max(GPR[_RA].ready()); }
-		std::string dasm() { std::string str = "vlb (q" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
-		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,16, ready) ? ready : 0; }
+		u64 ready() { return max(GPR[_RA].ready(), VR[_VM].ready()); }
+		std::string dasm() { std::string str = "vlb (q" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ", q" + std::to_string(VR[_VM].idx()) + ")"; return str; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1D.contains(EA,16, ready) ? ready : 0; }
 	};
 
 	class vstb : public operation
@@ -717,9 +777,10 @@ namespace pipelined
 	    private:
 		vrnum	_VS;
 		gprnum	_RA;
+		vrnum	_VM;
 		u32	_latency;
 	    public:
-		vstb(vrnum VS, gprnum RA) { _VS = VS; _RA = RA; _latency = 0; }
+		vstb(vrnum VS, gprnum RA, vrnum VM) { _VS = VS; _RA = RA; _VM = VM; _latency = 0; }
 		bool issue(u64 cycle) 
 		{
 		    GPR[_RA].used(cycle);
@@ -741,9 +802,57 @@ namespace pipelined
 		}
 		units::unit& unit() { return units::STU; }
 		u64 target(u64 cycle) { return cycle; }
-		u64 ready() { return max(GPR[_RA].ready(), VR[_VS].ready()); }
-		std::string dasm() { std::string str = "vstb (q" + std::to_string(VR[_VS].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
-		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,16, ready) ? ready : 0; }
+		u64 ready() { return max(GPR[_RA].ready(), VR[_VS].ready(), VR[_VM].ready()); }
+		std::string dasm() { std::string str = "vstb (q" + std::to_string(VR[_VS].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ", q" + std::to_string(VR[_VM].idx()) + ")"; return str; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1D.contains(EA,16, ready) ? ready : 0; }
+	};
+
+	class vmaskb : public operation
+	{
+	    private:
+		vrnum	_VT;
+		gprnum	_RA;
+		u32	_idx;
+	    public:
+		vmaskb(vrnum VT, gprnum RA) { _VT = VT; _RA = RA; }
+		bool issue(u64 cycle)
+		{
+		    GPR[_RA].used(cycle);
+		    return false;
+		}
+		units::unit& unit() { return units::VU; }
+		u64 target(u64 cycle)
+		{
+		    VR[_VT].busy() = false;
+		    _idx = VRF::find_next();
+		    return max(cycle, VRF::V[_idx].used());
+		}
+		u64 ready() { return max(GPR[_RA].ready()); }
+		std::string dasm() { std::string str = "vmaskb (q" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
+	};
+
+	class vpopcnt : public operation
+	{
+	    private:
+		gprnum	_RT;
+		vrnum	_VA;
+		u32	_idx;
+	    public:
+		vpopcnt(gprnum RT, vrnum VA) { _RT = RT; _VA = VA; }
+		bool issue(u64 cycle)
+		{
+		    VR[_VA].used(cycle);
+		    return false;
+		}
+		units::unit& unit() { return units::VU; }
+		u64 target(u64 cycle)
+		{
+		    GPR[_RT].busy() = false;
+		    _idx = PRF::find_next();
+		    return max(cycle, PRF::R[_idx].used());
+		}
+		u64 ready() { return max(VR[_VA].ready()); }
+		std::string dasm() { std::string str = "vpopcnt (r" + std::to_string(_idx) + ", q" + std::to_string(VR[_VA].idx()) + ")"; return str; }
 	};
 
 	class b : public operation
@@ -958,6 +1067,32 @@ namespace pipelined
 		std::string dasm() { std::string str = "addi (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
 
+	class add : public instruction
+	{
+	    private:
+		gprnum	_RT;
+		gprnum	_RA;
+		gprnum	_RB;
+	    public:
+		add(gprnum RT, gprnum RA, gprnum RB, u32 addr) : instruction(addr) { _RT = RT; _RA = RA; _RB = RB; }
+		bool process() { return operations::process(new operations::add(_RT, _RA, _RA), dispatched()); }
+		static bool execute(gprnum RT, gprnum RA, gprnum RB, u32 line) { return instructions::process(new add(RT, RA, RB, 4*line)); }
+		std::string dasm() { std::string str = "add (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", r" + std::to_string(_RB) + ")"; return str; }
+	};
+
+	class sub : public instruction
+	{
+	    private:
+		gprnum	_RT;
+		gprnum	_RA;
+		gprnum	_RB;
+	    public:
+		sub(gprnum RT, gprnum RA, gprnum RB, u32 addr) : instruction(addr) { _RT = RT; _RA = RA; _RB = RB; }
+		bool process() { return operations::process(new operations::sub(_RT, _RA, _RA), dispatched()); }
+		static bool execute(gprnum RT, gprnum RA, gprnum RB, u32 line) { return instructions::process(new sub(RT, RA, RB, 4*line)); }
+		std::string dasm() { std::string str = "sub (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", r" + std::to_string(_RB) + ")"; return str; }
+	};
+
 	class cmpi : public instruction
 	{
 	    private:
@@ -999,11 +1134,12 @@ namespace pipelined
 	    private:
 		vrnum 	_VT;
 		gprnum	_RA;
+		vrnum	_VM;
 	    public:
-		vlb(vrnum VT, gprnum RA, u32 addr) : instruction(addr) { _VT = VT; _RA = RA; }
-		bool process() { return operations::process(new operations::vlb(_VT, _RA), dispatched()); }
-		static bool execute(vrnum VT, gprnum RA, u32 line) { return instructions::process(new vlb(VT, RA, 4*line)); }
-		std::string dasm() { std::string str = "vlb (v" + std::to_string(_VT) + ", r" + std::to_string(_RA) + ")"; return str; }
+		vlb(vrnum VT, gprnum RA, vrnum VM, u32 addr) : instruction(addr) { _VT = VT; _RA = RA; _VM = VM; }
+		bool process() { return operations::process(new operations::vlb(_VT, _RA, _VM), dispatched()); }
+		static bool execute(vrnum VT, gprnum RA, vrnum VM, u32 line) { return instructions::process(new vlb(VT, RA, VM, 4*line)); }
+		std::string dasm() { std::string str = "vlb (v" + std::to_string(_VT) + ", r" + std::to_string(_RA) + ", v" + std::to_string(_VM) + ")"; return str; }
 	};
 
 	class vstb : public instruction
@@ -1011,11 +1147,12 @@ namespace pipelined
 	    private:
 		vrnum	_VS;
 		gprnum	_RA;
+		vrnum	_VM;
 	    public:
-		vstb(vrnum VS, gprnum RA, u32 addr) : instruction(addr) { _VS = VS, _RA = RA; }
-		bool process() { return operations::process(new operations::vstb(_VS, _RA), dispatched()); }
-		static bool execute(vrnum VS, gprnum RA, u32 line) { return instructions::process(new vstb(VS, RA, 4*line)); }
-		std::string dasm() { std::string str = "vstb (v" + std::to_string(_VS) + ", r" + std::to_string(_RA) + ")"; return str; }
+		vstb(vrnum VS, gprnum RA, vrnum VM, u32 addr) : instruction(addr) { _VS = VS, _RA = RA; _VM = VM; }
+		bool process() { return operations::process(new operations::vstb(_VS, _RA, _VM), dispatched()); }
+		static bool execute(vrnum VS, gprnum RA, vrnum VM, u32 line) { return instructions::process(new vstb(VS, RA, VM, 4*line)); }
+		std::string dasm() { std::string str = "vstb (v" + std::to_string(_VS) + ", r" + std::to_string(_RA) + ", v" + std::to_string(_VM) + ")"; return str; }
 	};
 
 	class beq : public instruction
@@ -1125,6 +1262,30 @@ namespace pipelined
 		bool process() { return operations::process(new operations::stfd(_FS, _RA), dispatched()); }
 		static bool execute(fprnum FS, gprnum RA, u32 line) { return instructions::process(new stfd(FS, RA, 4*line)); }
 		std::string dasm() { std::string str = "stfd (f" + std::to_string(_FS) + ", r" + std::to_string(_RA) + ")"; return str; }
+	};
+
+	class vmaskb : public instruction
+	{
+	    private:
+		vrnum	_VT;
+		gprnum	_RA;
+	    public:
+		vmaskb(vrnum VT, gprnum RA, u32 addr) : instruction(addr) { _VT = VT; _RA = RA; }
+		bool process() { return operations::process(new operations::vmaskb(_VT, _RA), dispatched()); }
+		static bool execute(vrnum VT, gprnum RA, u32 line) { return instructions::process(new vmaskb(VT, RA, 4*line)); }
+		std::string dasm() { std::string str = "vmaskb (v" + std::to_string(_VT) + ", r" + std::to_string(_RA) + ")"; return str; }
+	};
+
+	class vpopcnt : public instruction
+	{
+	    private:
+		gprnum	_RT;
+		vrnum	_VA;
+	    public:
+		vpopcnt(gprnum RT, vrnum VA, u32 addr) : instruction(addr) { _RT = RT; _VA = VA; }
+		bool process() { return operations::process(new operations::vpopcnt(_RT, _VA), dispatched()); }
+		static bool execute(gprnum RT, vrnum VA, u32 line) { return instructions::process(new vpopcnt(RT, VA, 4*line)); }
+		std::string dasm() { std::string str = "vpopcnt (r" + std::to_string(_RT) + ", v" + std::to_string(_VA) + ")"; return str; }
 	};
     };
 };

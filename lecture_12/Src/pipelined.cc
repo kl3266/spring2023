@@ -48,6 +48,7 @@ namespace pipelined
     units::unit			units::FXU;
     units::unit			units::FPU;
     units::unit			units::BRU;
+    units::unit			units::VU;
 
     std::multiset<u64>		operations::issued;
 
@@ -574,6 +575,7 @@ namespace pipelined
 	units::LDU.clear();
 	units::STU.clear();
 	units::BRU.clear();
+	units::VU.clear();
 	flags.clear();
 	operations::issued.clear();
 	pipelined::caches::L1D.clear();
