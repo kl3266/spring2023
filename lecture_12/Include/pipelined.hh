@@ -125,6 +125,7 @@ namespace pipelined
     static u64 max(u64 a, u64 b)		{ return a >= b ? a : b; }
     static u64 max(u64 a, u64 b, u64 c) 	{ return max(a, max(b,c)); }
     static u64 max(u64 a, u64 b, u64 c, u64 d)	{ return max(a, max(b, c, d)); }
+    static u64 min(u64 a, u64 b)		{ return a <= b ? a : b; }
 
     typedef enum
     {
@@ -324,6 +325,7 @@ namespace pipelined
 		void store	(u32 EA, u8	B);		// store byte B in address EA
 		void store	(u32 EA, const vector &V);	// store vector V in address EA
 		void store	(u32 EA, const u8 (&V)[16]);	// store bytes of vector V in address EA
+		void store	(u32 EA, const u8 (&V)[16], const u8 (&M)[16]);	// store bytes of vector V in address EA, under control of mask M
         };
 
         typedef std::vector<entry>      set;
@@ -763,7 +765,7 @@ namespace pipelined
 		    u32 EA = GPR[_RA].data(); 			// compute effective address of load
 		    u8* data = load(EA,16);			// fill the cache with the line, if not already there
 		    VR[_VT].idx()   = _idx;
-		    for (u32 i=0; i<16; i++) VR[_VT].data().byte[i] = *((u8*)data + i);
+		    for (u32 i=0; i<16; i++) VR[_VT].data().byte[i] = VR[_VM].data().byte[i] ? *((u8*)data + i) : 0;
 		    VR[_VT].ready() = cycle + latency(); 
 		    return false; 
 		}
@@ -784,10 +786,10 @@ namespace pipelined
 		bool issue(u64 cycle) 
 		{
 		    GPR[_RA].used(cycle);
-		    uint32_t EA = GPR[_RA].data();				// compute effective address of store
-		    u8* data = load(EA,16);					// fill the cache with the line, if not already there
-		    caches::L1D.find(EA,16)->store(EA,VR[_VS].data().byte);	// write data to L1 cache
-		    caches::L2 .find(EA,16)->store(EA,VR[_VS].data().byte);	// write to L2 as well, since L1 is write-through!
+		    uint32_t EA = GPR[_RA].data();					// compute effective address of store
+		    u8* data = load(EA,16);						// fill the cache with the line, if not already there
+		    caches::L1D.find(EA,16)->store(EA,VR[_VS].data().byte, VR[_VM].data().byte);	// write data to L1 cache
+		    caches::L2 .find(EA,16)->store(EA,VR[_VS].data().byte, VR[_VM].data().byte);	// write to L2 as well
 		    return false; 
 		}
 		u32 latency() 
@@ -818,6 +820,10 @@ namespace pipelined
 		bool issue(u64 cycle)
 		{
 		    GPR[_RA].used(cycle);
+		    vector RES = {0}; for (u32 i=0; i<min(16U, GPR[_RA].data()); i++) RES.byte[i] = 0; 
+		    VR[_VT].idx()   = _idx; 
+		    VR[_VT].data()  = RES;
+		    VR[_VT].ready() = cycle + latency(); 
 		    return false;
 		}
 		units::unit& unit() { return units::VU; }
@@ -842,6 +848,10 @@ namespace pipelined
 		bool issue(u64 cycle)
 		{
 		    VR[_VA].used(cycle);
+		    u32 RES = 0; for (u32 i=0; i<16; i++) RES += __builtin_popcount(VR[_VA].data().byte[i]);
+		    GPR[_RT].idx() = _idx;
+		    GPR[_RT].data() = RES;
+		    GPR[_RT].ready() = cycle + latency(); 
 		    return false;
 		}
 		units::unit& unit() { return units::VU; }
