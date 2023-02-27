@@ -558,7 +558,7 @@ namespace pipelined
 		}
 		u64 ready() { return max(GPR[_RA].ready()); }
 		std::string dasm() { std::string str = "lbz (p" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
-		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,1, ready) ? ready : 0; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1D.contains(EA,1, ready) ? ready : 0; }
 	};
 
 	class stb : public operation
@@ -592,7 +592,7 @@ namespace pipelined
 		u64 target(u64 cycle) { return cycle; }
 		u64 ready() { return max(GPR[_RA].ready(), GPR[_RS].ready()); }
 		std::string dasm() { std::string str = "stb (p" + std::to_string(GPR[_RS].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
-		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,1, ready) ? ready : 0; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1D.contains(EA,1, ready) ? ready : 0; }
 	};
 
 	class lfd : public operation
@@ -634,7 +634,7 @@ namespace pipelined
 		}
 		u64 ready() { return max(GPR[_RA].ready()); }
 		std::string dasm() { std::string str = "lfd (p" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
-		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,8, ready) ? ready : 0; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1D.contains(EA,8, ready) ? ready : 0; }
 	};
 
 	class stfd : public operation
@@ -668,7 +668,7 @@ namespace pipelined
 		u64 target(u64 cycle) { return cycle; }
 		u64 ready() { return max(GPR[_RA].ready(), FPR[_FS].ready()); }
 		std::string dasm() { std::string str = "stfd (p" + std::to_string(FPR[_FS].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
-		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,8, ready) ? ready : 0; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1D.contains(EA,8, ready) ? ready : 0; }
 	};
 
 	class vlb : public operation
@@ -709,7 +709,7 @@ namespace pipelined
 		}
 		u64 ready() { return max(GPR[_RA].ready()); }
 		std::string dasm() { std::string str = "vlb (q" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
-		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,16, ready) ? ready : 0; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1D.contains(EA,16, ready) ? ready : 0; }
 	};
 
 	class vstb : public operation
@@ -743,7 +743,7 @@ namespace pipelined
 		u64 target(u64 cycle) { return cycle; }
 		u64 ready() { return max(GPR[_RA].ready(), VR[_VS].ready()); }
 		std::string dasm() { std::string str = "vstb (q" + std::to_string(VR[_VS].idx()) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
-		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,16, ready) ? ready : 0; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1D.contains(EA,16, ready) ? ready : 0; }
 	};
 
 	class b : public operation
