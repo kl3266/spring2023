@@ -102,6 +102,14 @@ namespace pipelined
         bool    LT;                             // less than
         bool    GT;                             // greater than
         bool    EQ;                             // equal to
+	u64	ready;				// ready time for flags
+	void 	clear()
+	{
+	    LT = false;
+	    GT = false;
+	    EQ = false;
+	    ready = 0;
+	}
     } flags_t;                                  // flags
 
     template<typename T> class reg
@@ -151,6 +159,7 @@ namespace pipelined
                 bool            valid;          // is entry valid?
                 uint32_t        addr;           // address of this entry
                 uint64_t        touched;        // last time this entry was used
+		u64		ready;		// cycle data are ready after a miss
 		std::vector<u8>	data;		// data in this entry
 
 		entry(u32 linesize) : data(linesize) { }	// creates a cache entry with linesize bytes of storage
@@ -182,6 +191,7 @@ namespace pipelined
                 array&          sets();                			 	// cache array
                 bool            hit(u32 EA);	        			// tests for address EA hit in cache
 		bool		contains(u32 EA, u32 L);			// tests if cache contains data in address range [EA, EA+L)
+		bool		contains(u32 EA, u32 L, u64 &ready);		// tests if cache contains data in address range [EA, EA+L)
 		bool		contains(u32 WA, u32 L, u32 &set, u32 &way);	// returns the set and way that contain the data (if true)
 		u8*		fill(u32 EA, u32 L);				// loads data in address range [EA, EA+L) into cache, returns a pointer to the data in cache
                 void            clear();                			// clear the cache
@@ -222,6 +232,7 @@ namespace pipelined
 		virtual u32  		throughput() 	{ return 1; }		// operation throughput
 		virtual u64	 	ready() = 0;				// time inputs are ready
 		virtual std::string	dasm()		{ return " "; }
+		virtual u64		cacheready()	{ return 0; }
 		void output(std::ostream& out)
 		{
 		    if (first)
@@ -244,7 +255,8 @@ namespace pipelined
 		{
 		    _count = counters::operations;
 		    counters::operations++;					// increment operation count
-		    u64 minissue = ready(); _ready = minissue;			// inputs ready
+		    u64 minissue = max(ready(), cacheready());			// check ready time for register and cache inputs
+		    _ready = minissue;						// inputs ready
 		    bool issuable = false;					// look for earliest issue possible
 		    while (!issuable)
 		    {
@@ -320,7 +332,7 @@ namespace pipelined
 		    return false; 
 		}	
 		units::unit& unit() { return units::FXU; }
-		void targetready(u64 cycle) { }
+		void targetready(u64 cycle) { flags.ready = cycle; }
 		u64 ready() { return max(GPR[_RA].ready()); }
 		std::string dasm() { std::string str = "cmpi (r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
@@ -345,6 +357,7 @@ namespace pipelined
 		void targetready(u64 cycle) { GPR[_RT].ready() = cycle; }
 		u64 ready() { return max(GPR[_RA].ready()); }
 		std::string dasm() { std::string str = "lbz (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ")"; return str; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,1, ready) ? ready : 0; }
 	};
 
 	class stb : public operation
@@ -368,6 +381,7 @@ namespace pipelined
 		void targetready(u64 cycle) { }
 		u64 ready() { return max(GPR[_RA].ready(), GPR[_RS].ready()); }
 		std::string dasm() { std::string str = "stb (r" + std::to_string(_RS) + ", r" + std::to_string(_RA) + ")"; return str; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,1, ready) ? ready : 0; }
 	};
 
 	class lfd : public operation
@@ -390,6 +404,7 @@ namespace pipelined
 		void targetready(u64 cycle) { FPR[_FT].ready() = cycle; }
 		u64 ready() { return max(GPR[_RA].ready()); }
 		std::string dasm() { std::string str = "lfd (f" + std::to_string(_FT) + ", r" + std::to_string(_RA) + ")"; return str; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,8, ready) ? ready : 0; }
 	};
 
 	class stfd : public operation
@@ -413,6 +428,7 @@ namespace pipelined
 		void targetready(u64 cycle) { }
 		u64 ready() { return max(GPR[_RA].ready(), FPR[_FS].ready()); }
 		std::string dasm() { std::string str = "stfd (f" + std::to_string(_FS) + ", r" + std::to_string(_RA) + ")"; return str; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1.contains(EA,8, ready) ? ready : 0; }
 	};
 
 	class b : public operation
@@ -437,7 +453,7 @@ namespace pipelined
 		bool execute() { if (flags.EQ) { NIA = CIA + _BD; return true; } else return false; }
 		units::unit& unit() { return units::BRU; }
 		void targetready(u64 cycle) { }
-		u64 ready() { return 0; }
+		u64 ready() { return max(flags.ready); }
 		std::string dasm() { std::string str = "beq (" + std::to_string(_BD) + ")"; return str; }
 	};
 

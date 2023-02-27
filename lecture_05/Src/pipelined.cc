@@ -2,7 +2,7 @@
 
 namespace pipelined
 {
-    bool	tracing = false;
+    bool	tracing = true;
     bool	operations::operation::first = true;
 
     const u32	params::MEM::N = 65536;
@@ -58,6 +58,7 @@ namespace pipelined
                     sets()[setix][wayix].valid = false;
                     sets()[setix][wayix].touched = 0;
                     sets()[setix][wayix].addr = 0;
+		    sets()[setix][wayix].ready = 0;
                 }
         }
 
@@ -151,6 +152,21 @@ namespace pipelined
 	    return contains(EA, L, setix, wayix);
 	}
 
+	bool	cache::contains(u32 EA, u32 L, u64 &ready)
+	{
+	    u32 setix; u32 wayix;
+	    if (contains(EA, L, setix, wayix))
+	    {
+		ready = sets()[setix][wayix].ready;
+		return true;
+	    }
+	    else
+	    {
+		ready = 0;
+		return false;
+	    }
+	}
+
 	u8*	cache::fill(u32 EA, u32 L)
 	{
 	    accesses++;
@@ -190,6 +206,7 @@ namespace pipelined
                 sets()[setix][lru].touched = counters::cycles;				// it was just touched
 		for (u32 i=0; i<linesize(); i++) 
 		    sets()[setix][lru].data[i] = MEM[lineaddr * linesize() + i];	// fill the entry with L bytes from memory, starting at addrress EA
+		sets()[setix][lru].ready = counters::cycles;				// cycle when data will be ready in cache entry
 		return sets()[setix][lru].data.data() + offset;				// return the contents
 	    }
 	}
@@ -223,6 +240,7 @@ namespace pipelined
 	units::LDU.clear();
 	units::STU.clear();
 	units::BRU.clear();
+	flags.clear();
 	operations::issued.clear();
     }
 
