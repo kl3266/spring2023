@@ -17,6 +17,7 @@
 
 // 2.2. Arithmetic instructions
 #define addi(RT, RA, SI)	instructions::addi::execute(RT, RA, SI, __LINE__)
+#define muli(RT, RA, SI)	instructions::muli::execute(RT, RA, SI, __LINE__)
 #define add(RT, RA, RB)		instructions::add ::execute(RT, RA, RB, __LINE__)
 #define sub(RT, RA, RB)		instructions::sub ::execute(RT, RA, RB, __LINE__)
 
@@ -37,17 +38,23 @@
 // 4. Vector Facility
 
 // 4.1. Load/Store instructions
-#define vlb(VT, RA, VM)		instructions::vlb  ::execute(VT, RA, VM, __LINE__)
-#define vstb(VS, RA, VM)	instructions::vstb ::execute(VS, RA, VM, __LINE__)
-#define vlfd(VT, RA)		instructions::vlfd ::execute(VT, RA, __LINE__)
-#define vstfd(VS, RA)		instructions::vstfd::execute(VS, RA, __LINE__)
+#define vlb(VT, RA, VM)		instructions::vlb     ::execute(VT, RA, VM, __LINE__)
+#define vstb(VS, RA, VM)	instructions::vstb    ::execute(VS, RA, VM, __LINE__)
+#define vlfd(VT, RA, VM)	instructions::vlfd    ::execute(VT, RA, VM, __LINE__)
+#define vstfd(VS, RA, VM)	instructions::vstfd   ::execute(VS, RA, VM, __LINE__)
+#define vlfs(VT, RA, VM)	instructions::vlfs    ::execute(VT, RA, VM, __LINE__)
+#define vstfs(VS, RA, VM)	instructions::vstfs   ::execute(VS, RA, VM, __LINE__)
+#define vlspltsp(VT, RA, VM)	instructions::vlspltsp::execute(VT, RA, VM, __LINE__)
 
 // 4.2. Arithmetic instructions
-#define vfmuldp(VT, VA, VB)	instructions::vfmul::execute(VT, VA, VB, __LINE__)
-#define vfadddp(VT, VA, VB)	instructions::vfadd::execute(VT, VA, VB, __LINE__)
+#define vfmuldp(VT, VA, VB, VM)	instructions::vfmuldp::execute(VT, VA, VB, VM, __LINE__)
+#define vfadddp(VT, VA, VB, VM)	instructions::vfadddp::execute(VT, VA, VB, VM, __LINE__)
+#define vfmulsp(VT, VA, VB, VM)	instructions::vfmulsp::execute(VT, VA, VB, VM, __LINE__)
+#define vfaddsp(VT, VA, VB, VM)	instructions::vfaddsp::execute(VT, VA, VB, VM, __LINE__)
 
 // 4.3. Mask instructions
 #define vmaskb(VM, RA)		instructions::vmaskb ::execute(VM, RA, __LINE__)
+#define vmaskw(VM, RA)		instructions::vmaskw ::execute(VM, RA, __LINE__)
 #define vpopcnt(RT, VM)		instructions::vpopcnt::execute(RT, VM, __LINE__)
 
 #endif

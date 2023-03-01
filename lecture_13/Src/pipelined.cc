@@ -535,6 +535,16 @@ namespace pipelined
 	modified = true;
     }
 
+    void pipelined::caches::entry::store(u32 EA, const float (&V)[4], const u32 (&M)[4])
+    {
+	u32 offset = EA % data.size();
+	assert(offset == 0);
+	assert(sizeof(V) == data.size());
+	float *buff = (float*)(data.data() + offset);
+	for (u32 i=0; i<4; i++) if (M[i]) *((float*)buff + i) = V[i];
+	modified = true;
+    }
+
     flags_t     flags;                          // flags
 
     uint32_t    CIA;                            // current instruction address
