@@ -546,6 +546,7 @@ namespace pipelined
 		bool issue(u64 cycle)
 		{
 		    GPR[_RA].used(cycle);
+		    GPR[_RB].used(cycle);
 		    u32 RES = GPR[_RA].data() + GPR[_RB].data(); 
 		    GPR[_RT].idx()   = _idx; 
 		    GPR[_RT].data()  = RES;
@@ -575,6 +576,7 @@ namespace pipelined
 		bool issue(u64 cycle)
 		{
 		    GPR[_RA].used(cycle);
+		    GPR[_RB].used(cycle);
 		    u32 RES = GPR[_RA].data() - GPR[_RB].data(); 
 		    GPR[_RT].idx()   = _idx; 
 		    GPR[_RT].data()  = RES;
@@ -663,6 +665,7 @@ namespace pipelined
 		bool issue(u64 cycle) 
 		{
 		    GPR[_RA].used(cycle);
+		    GPR[_RS].used(cycle);
 		    uint32_t EA = GPR[_RA].data();				// compute effective address of store
 		    u8* data = load(EA, 1);					// fill the cache with the line, if not already there
 		    caches::L1D.find(EA, 1)->store(EA,(u8)GPR[_RS].data()); 	// write data to L1 cache
@@ -792,6 +795,7 @@ namespace pipelined
 		bool issue(u64 cycle)
 		{
 		    GPR[_RA].used(cycle);
+		    VR[_VM].used(cycle);
 		    u32 EA = GPR[_RA].data(); 			// compute effective address of load
 		    u8* data = load(EA,16);			// fill the cache with the line, if not already there
 		    VR[_VT].idx()   = _idx;
@@ -816,6 +820,8 @@ namespace pipelined
 		bool issue(u64 cycle) 
 		{
 		    GPR[_RA].used(cycle);
+		    VR[_VM].used(cycle);
+		    VR[_VS].used(cycle);
 		    uint32_t EA = GPR[_RA].data();					// compute effective address of store
 		    u8* data = load(EA,16);						// fill the cache with the line, if not already there
 		    caches::L1D.find(EA,16)->store(EA,VR[_VS].data().byte, VR[_VM].data().byte);	// write data to L1 cache
@@ -869,6 +875,7 @@ namespace pipelined
 		bool issue(u64 cycle)
 		{
 		    GPR[_RA].used(cycle);
+		    VR[_VM].used(cycle);
 		    u32 EA = GPR[_RA].data(); 			// compute effective address of load
 		    u8* data = load(EA,16);			// fill the cache with the line, if not already there
 		    VR[_VT].idx()   = _idx;
@@ -911,6 +918,7 @@ namespace pipelined
 		bool issue(u64 cycle)
 		{
 		    GPR[_RA].used(cycle);
+		    VR[_VM].used(cycle);
 		    u32 EA = GPR[_RA].data(); 			// compute effective address of load
 		    u8* data = load(EA,4);			// fill the cache with the line, if not already there
 		    VR[_VT].idx()   = _idx;
@@ -935,6 +943,8 @@ namespace pipelined
 		bool issue(u64 cycle) 
 		{
 		    GPR[_RA].used(cycle);
+		    VR[_VM].used(cycle);
+		    VR[_VS].used(cycle);
 		    uint32_t EA = GPR[_RA].data();					// compute effective address of store
 		    u8* data = load(EA,16);						// fill the cache with the line, if not already there
 		    caches::L1D.find(EA,16)->store(EA,VR[_VS].data().sp, VR[_VM].data().word);	// write data to L1 cache
@@ -1171,13 +1181,13 @@ namespace pipelined
 		    VR[_VA].used(cycle);
 		    VR[_VB].used(cycle);
 		    VR[_VM].used(cycle);
-		    vector RES = {0};  for (int i=0; i<4; i++) { VR[_VT].data().sp[i] = VR[_VM].data().word[i] ? VR[_VA].data().sp[i] * VR[_VB].data().sp[i] : 0.0; }
+		    vector RES = {0};  for (int i=0; i<4; i++) { RES.sp[i] = VR[_VM].data().word[i] ? VR[_VA].data().sp[i] * VR[_VB].data().sp[i] : 0.0; }
 		    VR[_VT].idx()   = _idx;
 		    VR[_VT].data()  = RES;
 		    VR[_VT].ready() = cycle + latency(); 
 		    return false; 
 		}
-		u64 ready() { return max(VR[_VA].ready(), VR[_VB].ready(), VR[_VM].ready()); }
+		u64 ready() { return max( VR[_VA].ready(), VR[_VM].ready(), VR[_VB].ready() ); }
 		std::string dasm() { std::string str = "vfmulsp (q" + std::to_string(_idx) + ", q" + std::to_string(VR[_VA].idx()) + ", q" + std::to_string(VR[_VB].idx()) + ", q" + std::to_string(VR[_VM].idx()) + ")"; return str; }
 	};
 
@@ -1233,7 +1243,7 @@ namespace pipelined
 		    VR[_VA].used(cycle);
 		    VR[_VB].used(cycle);
 		    VR[_VM].used(cycle);
-		    vector RES = {0};  for (int i=0; i<4; i++) { VR[_VT].data().sp[i] = VR[_VM].data().word[i] ? VR[_VA].data().sp[i] + VR[_VB].data().sp[i] : 0.0; }
+		    vector RES = {0};  for (int i=0; i<4; i++) { RES.sp[i] = VR[_VM].data().word[i] ? VR[_VA].data().sp[i] + VR[_VB].data().sp[i] : 0.0; }
 		    VR[_VT].idx()   = _idx;
 		    VR[_VT].data()  = RES;
 		    VR[_VT].ready() = cycle + latency(); 
@@ -1551,7 +1561,7 @@ namespace pipelined
 		vrnum	_VB;
 		vrnum	_VM;
 	    public:
-		vfmulsp(vrnum VT, vrnum VA, vrnum VB, vrnum VM, u32 addr) : instruction(addr) { _VT = VT; _VA = VA; _VB = VB; _VT = VT; }
+		vfmulsp(vrnum VT, vrnum VA, vrnum VB, vrnum VM, u32 addr) : instruction(addr) { _VT = VT; _VA = VA; _VB = VB; _VM = VM; }
 		bool process() { return operations::process(new operations::vfmulsp(_VT, _VA, _VB, _VM), dispatched()); }
 		static bool execute(vrnum VT, vrnum VA, vrnum VB, vrnum VM, u32 line) { return instructions::process(new vfmulsp(VT, VA, VB, VM, 4*line)); }
 		std::string dasm() { std::string str = "vfmulsp (v" + std::to_string(_VT) + ", v" + std::to_string(_VA) + ", v" + std::to_string(_VB) + ", v" + std::to_string(_VT) + ")"; return str; }
@@ -1565,7 +1575,7 @@ namespace pipelined
 		vrnum	_VB;
 		vrnum	_VM;
 	    public:
-		vfaddsp(vrnum VT, vrnum VA, vrnum VB, vrnum VM, u32 addr) : instruction(addr) { _VT = VT; _VA = VA; _VB = VB; _VT = VT; }
+		vfaddsp(vrnum VT, vrnum VA, vrnum VB, vrnum VM, u32 addr) : instruction(addr) { _VT = VT; _VA = VA; _VB = VB; _VM = VM; }
 		bool process() { return operations::process(new operations::vfaddsp(_VT, _VA, _VB, _VM), dispatched()); }
 		static bool execute(vrnum VT, vrnum VA, vrnum VB, vrnum VM, u32 line) { return instructions::process(new vfaddsp(VT, VA, VB, VM, 4*line)); }
 		std::string dasm() { std::string str = "vfaddsp (v" + std::to_string(_VT) + ", v" + std::to_string(_VA) + ", v" + std::to_string(_VB) + ", v" + std::to_string(_VT) + ")"; return str; }
