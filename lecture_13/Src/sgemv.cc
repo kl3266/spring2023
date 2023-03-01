@@ -18,7 +18,10 @@ namespace pipelined
 loopj:  cmpi(r7, 0);			// n == 0?
 	beq(end); 			// while (n != 0)
 	vmaskw(v0, r6);			// VM = vmaskw(m)
+	std::cout << "v[0] = ["; for (int i=0; i<4; i++) { std::cout << " " << VR[0].data().word[i]; }; std::cout << "]" << std::endl;
+	std::cout << "r[5] = ["; std::cout << GPR[5].data(); std::cout << std::endl;
 	vlspltsp(v1, r5, v0);		// v1<VM> = x[j]
+	std::cout << "v[1] = ["; for (int i=0; i<4; i++) { std::cout << " " << VR[1].data().sp[i]; }; std::cout << "]" << std::endl;
 	addi(r9, r6, 0);		// r9 = m
 	addi(r10, r4, 0);		// r10 = A[:,j]
 loopi:  cmpi(r9,0);			// m == 0?

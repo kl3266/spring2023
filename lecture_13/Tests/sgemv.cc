@@ -64,12 +64,12 @@ int main
     printf("L3: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n",
 	   pipelined::caches::L3.capacity(), pipelined::caches::L3.nsets(), pipelined::caches::L3.nways(), pipelined::caches::L3.linesize());
 
-    for (uint32_t m = 2; m <= 64; m *= 2) for (uint32_t n = m/2; n <= m; n *= 2)
+    for (uint32_t m = 4; m <= 64; m *= 2) for (uint32_t n = m; n <= 2*m; n *= 2)
     {
 	test_sgemv(m,n);
     }
     
-    for (uint32_t m = 2; m <= 4; m *= 2) for (uint32_t n = m/2; n <= 1024; n *= 2)
+    for (uint32_t m = 4; m <= 8; m *= 2) for (uint32_t n = m; n <= 1024; n *= 2)
     {
 	test_sgemv(m,n);
     }

@@ -895,9 +895,9 @@ namespace pipelined
 		{ 
 		    if(_latency) return _latency; 
 		    u32 EA = GPR[_RA].data(); 
-		    if      (caches::L1D.contains(EA,16))	_latency = params:: L1::latency;
-		    else if (caches:: L2.contains(EA,16))	_latency = params:: L2::latency;
-		    else if (caches:: L3.contains(EA,16)) 	_latency = params:: L3::latency;
+		    if      (caches::L1D.contains(EA,4))	_latency = params:: L1::latency;
+		    else if (caches:: L2.contains(EA,4))	_latency = params:: L2::latency;
+		    else if (caches:: L3.contains(EA,4)) 	_latency = params:: L3::latency;
 		    else  					_latency = params::MEM::latency; 
 		    return _latency; 
 		}
