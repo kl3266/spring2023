@@ -17,9 +17,12 @@
 
 // 2.2. Arithmetic instructions
 #define addi(RT, RA, SI)	instructions::addi::execute(RT, RA, SI, __LINE__)
+#define add(RT, RA, RS)	instructions::add::execute(RT, RA, RS, __LINE__)
+#define sub(RT, RA, RS)	instructions::sub::execute(RT, RA, RS, __LINE__)
 
 // 2.3. Compare instructions
 #define cmpi(RA, SI)		instructions::cmpi::execute(RA, SI, __LINE__)
+#define cmp(RA, RT)		instructions::cmp::execute(RA, RT, __LINE__)
 
 // 3. Floating-point Facility
 
