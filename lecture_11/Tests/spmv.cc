@@ -19,10 +19,7 @@ void test_spmv(u32 m, u32 n)
 
     for (uint32_t i=0; i<M; i++) *((double*)(pipelined::MEM.data() + Y + i*sizeof(double))) = 0.0;  // set Y to 0
     for (uint32_t j=0; j<N; j++) *((double*)(pipelined::MEM.data() + X + j*sizeof(double))) = (double) j;   // populate x
-    for (uint32_t k=0; k<NNZ; k++)
-    {
-        *((double*)(pipelined::MEM.data() + A + k*sizeof(double))) = (double) k; // populate A
-    }
+    for (uint32_t k=0; k<NNZ; k++) *((double*)(pipelined::MEM.data() + A + k*sizeof(double))) = (double) k; // populate A
     *((uint32_t*)(pipelined::MEM.data() + I + 0*sizeof(uint32_t))) = 0;    // populate i matrix
     *((uint32_t*)(pipelined::MEM.data() + I + 1*sizeof(uint32_t))) = 0;
     *((uint32_t*)(pipelined::MEM.data() + I + 2*sizeof(uint32_t))) = 1;
