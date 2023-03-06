@@ -14,6 +14,7 @@
 // 2.1. Load/Store instructions
 #define lbz(RT, RA)		instructions::lbz::execute(RT, RA, __LINE__)
 #define stb(RS, RA)		instructions::stb::execute(RS, RA, __LINE__)
+#define lw(RT, RA)		instructions::lw::execute(RT, RA, __LINE__)
 
 // 2.2. Arithmetic instructions
 #define addi(RT, RA, SI)	instructions::addi::execute(RT, RA, SI, __LINE__)

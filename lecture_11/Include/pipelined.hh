@@ -590,6 +590,48 @@ namespace pipelined
 		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1D.contains(EA,1, ready) ? ready : 0; }
 	};
 
+	class lw : public operation
+	{
+	    private:
+		gprnum	_RT;
+		gprnum	_RA;
+		u32	_latency;
+		u32	_idx;
+	    public:
+		lbz(gprnum RT, gprnum RA) { _RT = RT; _RA = RA; _latency = 0; }
+		u32 latency() 
+		{ 
+		    if(_latency) return _latency; 
+		    u32 EA = GPR[_RA].data(); 
+		    if      (caches::L1D.contains(EA,4))	_latency = params:: L1::latency;
+		    else if (caches:: L2.contains(EA,4))	_latency = params:: L2::latency;
+		    else if (caches:: L3.contains(EA,4)) 	_latency = params:: L3::latency;
+		    else  					_latency = params::MEM::latency; 
+		    return _latency; 
+		}
+		units::unit& unit() { return units::LDU; }
+		u64 target(u64 cycle) 
+		{ 
+		    GPR[_RT].busy() = false;
+		    _idx = PRF::find_next();
+		    return max(cycle, PRF::R[_idx].used());
+		}
+		bool issue(u64 cycle)
+		{
+		    GPR[_RA].used(cycle);
+		    u32 EA = GPR[_RA].data(); 			// compute effective address of load
+		    u8* data = load(EA, 4);			// fill the cache with the line, if not already there
+		    u32 RES = *((u32*)data);			// get data from the cache
+		    GPR[_RT].idx()   = _idx;
+		    GPR[_RT].data()  = RES;
+		    GPR[_RT].ready() = cycle + latency(); 
+		    return false; 
+		}
+		u64 ready() { return max(GPR[_RA].ready()); }
+		std::string dasm() { std::string str = "lw (p" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ")"; return str; }
+		u64 cacheready() { u32 EA = GPR[_RA].data(); u64 ready; return caches::L1D.contains(EA,4, ready) ? ready : 0; }
+	};
+
 	class stb : public operation
 	{
 	    private:
@@ -1022,6 +1064,18 @@ namespace pipelined
 		bool process() { return operations::process(new operations::lbz(_RT, _RA), dispatched()); }
 		static bool execute(gprnum RT, gprnum RA, u32 line) { return instructions::process(new lbz(RT, RA, 4*line)); }
 		std::string dasm() { std::string str = "lbz (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ")"; return str; }
+	};
+
+	class lw : public instruction
+	{
+	    private:
+		gprnum 	_RT;
+		gprnum	_RA;
+	    public:
+		lw(gprnum RT, gprnum RA, u32 addr) : instruction(addr) { _RT = RT; _RA = RA; }
+		bool process() { return operations::process(new operations::lw(_RT, _RA), dispatched()); }
+		static bool execute(gprnum RT, gprnum RA, u32 line) { return instructions::process(new lw(RT, RA, 4*line)); }
+		std::string dasm() { std::string str = "lw (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ")"; return str; }
 	};
 
 	class stb : public instruction

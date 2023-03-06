@@ -4,30 +4,54 @@
 
 using namespace pipelined;
 
-void test_mxv(u32 m, u32 n)
+void test_spmv(u32 m, u32 n)
 {
     pipelined::zeromem();
 
     const uint32_t M = m;
     const uint32_t N = n;
-
+    const uint32_t NNZ = 10;
     const uint32_t Y = 0;
     const uint32_t X = Y + M*sizeof(double);
     const uint32_t A = X + N*sizeof(double);
+    const uint32_t I = A + NNZ*sizeof(double);
+    const uint32_t J = I + NNZ*sizeof(double);
 
-    for (uint32_t i=0; i<M; i++) *((double*)(pipelined::MEM.data() + Y + i*sizeof(double))) = 0.0;
-    for (uint32_t j=0; j<N; j++) *((double*)(pipelined::MEM.data() + X + j*sizeof(double))) = (double)j;
-    for (uint32_t i=0; i<M; i++) for (uint32_t j=0; j<N; j++) *((double*)(pipelined::MEM.data() + A + (i*N+j)*sizeof(double))) = (double)i;
+    for (uint32_t i=0; i<M; i++) *((double*)(pipelined::MEM.data() + Y + i*sizeof(double))) = 0.0;  // set Y to 0
+    for (uint32_t j=0; j<N; j++) *((double*)(pipelined::MEM.data() + X + j*sizeof(double))) = (double) j;   // populate x
+    for (uint32_t k=0; k<NNZ; k++) *((double*)(pipelined::MEM.data() + A + k*sizeof(double))) = (double) k; // populate A
+    *((double*)(pipelined::MEM.data() + I + 0*sizeof(double))) = (double) 0;    // populate i matrix
+    *((double*)(pipelined::MEM.data() + I + 1*sizeof(double))) = (double) 0;
+    *((double*)(pipelined::MEM.data() + I + 2*sizeof(double))) = (double) 1;
+    *((double*)(pipelined::MEM.data() + I + 3*sizeof(double))) = (double) 1;
+    *((double*)(pipelined::MEM.data() + I + 4*sizeof(double))) = (double) 2;
+    *((double*)(pipelined::MEM.data() + I + 5*sizeof(double))) = (double) 3;
+    *((double*)(pipelined::MEM.data() + I + 6*sizeof(double))) = (double) 3;
+    *((double*)(pipelined::MEM.data() + I + 7*sizeof(double))) = (double) 4;
+    *((double*)(pipelined::MEM.data() + I + 8*sizeof(double))) = (double) 5;
+    *((double*)(pipelined::MEM.data() + I + 9*sizeof(double))) = (double) 5;
 
+    *((double*)(pipelined::MEM.data() + J + 0*sizeof(double))) = (double) 0;    // populate j matrix
+    *((double*)(pipelined::MEM.data() + J + 1*sizeof(double))) = (double) 2;
+    *((double*)(pipelined::MEM.data() + J + 2*sizeof(double))) = (double) 1;
+    *((double*)(pipelined::MEM.data() + J + 3*sizeof(double))) = (double) 3;
+    *((double*)(pipelined::MEM.data() + J + 4*sizeof(double))) = (double) 1;
+    *((double*)(pipelined::MEM.data() + J + 5*sizeof(double))) = (double) 0;
+    *((double*)(pipelined::MEM.data() + J + 6*sizeof(double))) = (double) 4;
+    *((double*)(pipelined::MEM.data() + J + 7*sizeof(double))) = (double) 3;
+    *((double*)(pipelined::MEM.data() + J + 8*sizeof(double))) = (double) 2;
+    *((double*)(pipelined::MEM.data() + J + 9*sizeof(double))) = (double) 4;
+    
     pipelined::zeroctrs();
 
     pipelined::GPR[3].data() = Y;
-    pipelined::GPR[4].data() = A;
-    pipelined::GPR[5].data() = X;
-    pipelined::GPR[6].data() = M;
-    pipelined::GPR[7].data() = N;
+    pipelined::GPR[4].data() = NNZ;
+    pipelined::GPR[5].data() = I;
+    pipelined::GPR[6].data() = J;
+    pipelined::GPR[7].data() = A;
+    pipelined::GPR[8].data() = X;
     
-    pipelined::mxv(0,0,0,0,0);
+    pipelined::spmv(0,0,0,0,0,0);
 
     pipelined::caches::L2.flush();
     pipelined::caches::L3.flush();
@@ -41,7 +65,19 @@ void test_mxv(u32 m, u32 n)
     {
 	double y = *((double*)(pipelined::MEM.data() + Y + i*sizeof(double)));
 	// printf("\ny[%2d] = %10.0f", i, y);
-	if (y != ((N*(N-1))/2)*i) { pass = false; }
+	//if (y != ((N*(N-1))/2)*i) { pass = false; }
+    if (i==0)
+        if (y != 2) pass = false;
+    if (i==1)
+        if (y != 11) pass = false;
+    if (i==2)
+        if (y != 4) pass = false;
+    if (i==3)
+        if (y != 24) pass = false;
+    if (i==4)
+        if (y != 21) pass = false;
+    if (i==5)
+        if (y != 52) pass = false;        
     }
     // printf("\n");
     if (pass) printf("PASS\n");
@@ -63,7 +99,7 @@ int main
     printf("L3: %u bytes of capacity, %u sets, %u-way set associative, %u-byte line size\n",
 	   pipelined::caches::L3.capacity(), pipelined::caches::L3.nsets(), pipelined::caches::L3.nways(), pipelined::caches::L3.linesize());
 
-    for (uint32_t m = 2; m <= 64; m *= 2) for (uint32_t n = m/2; n <= m; n *= 2)
+    /*for (uint32_t m = 2; m <= 64; m *= 2) for (uint32_t n = m/2; n <= m; n *= 2)
     {
 	test_mxv(m,n);
     }
@@ -71,7 +107,8 @@ int main
     for (uint32_t m = 2; m <= 4; m *= 2) for (uint32_t n = m/2; n <= 1024; n *= 2)
     {
 	test_mxv(m,n);
-    }
+    }*/
+    test_mxv(6,5);
     
     return 0;
 }
