@@ -14,34 +14,37 @@ void test_spmv(u32 m, u32 n)
     const uint32_t Y = 0;
     const uint32_t X = Y + M*sizeof(double);
     const uint32_t A = X + N*sizeof(double);
-    const uint32_t I = A + NNZ*sizeof(uint32_t);
+    const uint32_t I = A + NNZ*sizeof(double);
     const uint32_t J = I + NNZ*sizeof(uint32_t);
 
     for (uint32_t i=0; i<M; i++) *((double*)(pipelined::MEM.data() + Y + i*sizeof(double))) = 0.0;  // set Y to 0
     for (uint32_t j=0; j<N; j++) *((double*)(pipelined::MEM.data() + X + j*sizeof(double))) = (double) j;   // populate x
-    for (uint32_t k=0; k<NNZ; k++) *((double*)(pipelined::MEM.data() + A + k*sizeof(double))) = (double) k; // populate A
-    *((uint32_t*)(pipelined::MEM.data() + I + 0*sizeof(uint32_t))) = (uint32_t) 0;    // populate i matrix
-    *((uint32_t*)(pipelined::MEM.data() + I + 1*sizeof(uint32_t))) = (uint32_t) 0;
-    *((uint32_t*)(pipelined::MEM.data() + I + 2*sizeof(uint32_t))) = (uint32_t) 1;
-    *((uint32_t*)(pipelined::MEM.data() + I + 3*sizeof(uint32_t))) = (uint32_t) 1;
-    *((uint32_t*)(pipelined::MEM.data() + I + 4*sizeof(uint32_t))) = (uint32_t) 2;
-    *((uint32_t*)(pipelined::MEM.data() + I + 5*sizeof(uint32_t))) = (uint32_t) 3;
-    *((uint32_t*)(pipelined::MEM.data() + I + 6*sizeof(uint32_t))) = (uint32_t) 3;
-    *((uint32_t*)(pipelined::MEM.data() + I + 7*sizeof(uint32_t))) = (uint32_t) 4;
-    *((uint32_t*)(pipelined::MEM.data() + I + 8*sizeof(uint32_t))) = (uint32_t) 5;
-    *((uint32_t*)(pipelined::MEM.data() + I + 9*sizeof(uint32_t))) = (uint32_t) 5;
+    for (uint32_t k=0; k<NNZ; k++)
+    {
+        *((double*)(pipelined::MEM.data() + A + k*sizeof(double))) = (double) k; // populate A
+    }
+    *((uint32_t*)(pipelined::MEM.data() + I + 0*sizeof(uint32_t))) = 0;    // populate i matrix
+    *((uint32_t*)(pipelined::MEM.data() + I + 1*sizeof(uint32_t))) = 0;
+    *((uint32_t*)(pipelined::MEM.data() + I + 2*sizeof(uint32_t))) = 1;
+    *((uint32_t*)(pipelined::MEM.data() + I + 3*sizeof(uint32_t))) = 1;
+    *((uint32_t*)(pipelined::MEM.data() + I + 4*sizeof(uint32_t))) = 2;
+    *((uint32_t*)(pipelined::MEM.data() + I + 5*sizeof(uint32_t))) = 3;
+    *((uint32_t*)(pipelined::MEM.data() + I + 6*sizeof(uint32_t))) = 3;
+    *((uint32_t*)(pipelined::MEM.data() + I + 7*sizeof(uint32_t))) = 4;
+    *((uint32_t*)(pipelined::MEM.data() + I + 8*sizeof(uint32_t))) = 5;
+    *((uint32_t*)(pipelined::MEM.data() + I + 9*sizeof(uint32_t))) = 5;
 
-    *((uint32_t*)(pipelined::MEM.data() + J + 0*sizeof(uint32_t))) = (uint32_t) 0;    // populate j matrix
-    *((uint32_t*)(pipelined::MEM.data() + J + 1*sizeof(uint32_t))) = (uint32_t) 2;
-    *((uint32_t*)(pipelined::MEM.data() + J + 2*sizeof(uint32_t))) = (uint32_t) 1;
-    *((uint32_t*)(pipelined::MEM.data() + J + 3*sizeof(uint32_t))) = (uint32_t) 3;
-    *((uint32_t*)(pipelined::MEM.data() + J + 4*sizeof(uint32_t))) = (uint32_t) 1;
-    *((uint32_t*)(pipelined::MEM.data() + J + 5*sizeof(uint32_t))) = (uint32_t) 0;
-    *((uint32_t*)(pipelined::MEM.data() + J + 6*sizeof(uint32_t))) = (uint32_t) 4;
-    *((uint32_t*)(pipelined::MEM.data() + J + 7*sizeof(uint32_t))) = (uint32_t) 3;
-    *((uint32_t*)(pipelined::MEM.data() + J + 8*sizeof(uint32_t))) = (uint32_t) 2;
-    *((uint32_t*)(pipelined::MEM.data() + J + 9*sizeof(uint32_t))) = (uint32_t) 4;
-    
+    *((uint32_t*)(pipelined::MEM.data() + J + 0*sizeof(uint32_t))) = 0;    // populate j matrix
+    *((uint32_t*)(pipelined::MEM.data() + J + 1*sizeof(uint32_t))) = 2;
+    *((uint32_t*)(pipelined::MEM.data() + J + 2*sizeof(uint32_t))) = 1;
+    *((uint32_t*)(pipelined::MEM.data() + J + 3*sizeof(uint32_t))) = 3;
+    *((uint32_t*)(pipelined::MEM.data() + J + 4*sizeof(uint32_t))) = 1;
+    *((uint32_t*)(pipelined::MEM.data() + J + 5*sizeof(uint32_t))) = 0;
+    *((uint32_t*)(pipelined::MEM.data() + J + 6*sizeof(uint32_t))) = 4;
+    *((uint32_t*)(pipelined::MEM.data() + J + 7*sizeof(uint32_t))) = 3;
+    *((uint32_t*)(pipelined::MEM.data() + J + 8*sizeof(uint32_t))) = 2;
+    *((uint32_t*)(pipelined::MEM.data() + J + 9*sizeof(uint32_t))) = 4;
+
     pipelined::zeroctrs();
 
     pipelined::GPR[3].data() = Y;

@@ -494,6 +494,36 @@ namespace pipelined
 		std::string dasm() { std::string str = "addi (p" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
 
+	class add : public operation
+	{
+	    private:
+		gprnum	_RT;
+		gprnum 	_RA;
+		gprnum 	_RS;
+		u32	_idx;
+	    public:
+		add(gprnum RT, gprnum RA, gprnum RS) { _RT = RT; _RA = RA, _RS = RS; }
+		units::unit& unit() { return units::FXU; }
+		u64 target(u64 cycle) 
+		{ 
+		    GPR[_RT].busy() = false;
+		    _idx = PRF::find_next();
+		    return max(cycle, PRF::R[_idx].used());
+		}
+		bool issue(u64 cycle)
+		{
+		    GPR[_RA].used(cycle);
+			GPR[_RS].used(cycle);
+		    u32 RES = GPR[_RA].data() + GPR[_RS].data(); 
+		    GPR[_RT].idx()   = _idx; 
+		    GPR[_RT].data()  = RES;
+		    GPR[_RT].ready() = cycle + latency(); 
+		    return false; 
+		}
+		u64 ready() { return max(GPR[_RA].ready(), GPR[_RS].ready()); }
+		std::string dasm() { std::string str = "add (p" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ", " + std::to_string(GPR[_RS].idx()) + ")"; return str; }
+	};
+
 	class muli : public operation
 	{
 	    private:
@@ -679,7 +709,6 @@ namespace pipelined
 		{ 
 		    if(_latency) return _latency; 
 		    u32 EA = GPR[_RA].data();
-			std::cout << "checkpoint before contains\n";
 		    if      (caches::L1D.contains(EA,8))	_latency = params:: L1::latency;
 		    else if (caches:: L2.contains(EA,8))	_latency = params:: L2::latency;
 		    else if (caches:: L3.contains(EA,8)) 	_latency = params:: L3::latency;
@@ -697,7 +726,6 @@ namespace pipelined
 		{
 		    GPR[_RA].used(cycle);
 		    u32 EA = GPR[_RA].data();			// compute effective address of load
-			std::cout << "checkpoint before load\n";
 		    u8* data = load(EA, 8);			// fill the cache with the line, if not already there
 		    double RES = *((double*)data);		// get data from the cache
 		    FPR[_FT].idx()   = _idx;
@@ -1029,6 +1057,19 @@ namespace pipelined
 		bool process() { return operations::process(new operations::addi(_RT, _RA, _SI), dispatched()); }
 		static bool execute(gprnum RT, gprnum RA, i16 SI, u32 line) { return instructions::process(new addi(RT, RA, SI, 4*line)); }
 		std::string dasm() { std::string str = "addi (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
+	};
+
+	class add : public instruction
+	{
+	    private:
+		gprnum	_RT;
+		gprnum	_RA;
+		gprnum	_RS;
+	    public:
+		add(gprnum RT, gprnum RA, gprnum RS, u32 addr) : instruction(addr) { _RT = RT; _RA = RA; _RS = RS; }
+		bool process() { return operations::process(new operations::add(_RT, _RA, _RS), dispatched()); }
+		static bool execute(gprnum RT, gprnum RA, gprnum RS, u32 line) { return instructions::process(new add(RT, RA, RS, 4*line)); }
+		std::string dasm() { std::string str = "add (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", " + std::to_string(_RS) + ")"; return str; }
 	};
 
 	class muli : public instruction
