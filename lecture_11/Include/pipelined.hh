@@ -502,7 +502,7 @@ namespace pipelined
 		i16	_SI;
 		u32	_idx;
 	    public:
-		addi(gprnum RT, gprnum RA, i16 SI) { _RT = RT; _RA = RA, _SI = SI; }
+		muli(gprnum RT, gprnum RA, i16 SI) { _RT = RT; _RA = RA, _SI = SI; }
 		units::unit& unit() { return units::FXU; }
 		u64 target(u64 cycle) 
 		{ 
@@ -598,7 +598,7 @@ namespace pipelined
 		u32	_latency;
 		u32	_idx;
 	    public:
-		lbz(gprnum RT, gprnum RA) { _RT = RT; _RA = RA; _latency = 0; }
+		lw(gprnum RT, gprnum RA) { _RT = RT; _RA = RA; _latency = 0; }
 		u32 latency() 
 		{ 
 		    if(_latency) return _latency; 
@@ -678,7 +678,8 @@ namespace pipelined
 		u32 latency() 
 		{ 
 		    if(_latency) return _latency; 
-		    u32 EA = GPR[_RA].data(); 
+		    u32 EA = GPR[_RA].data();
+			std::cout << "checkpoint before contains\n";
 		    if      (caches::L1D.contains(EA,8))	_latency = params:: L1::latency;
 		    else if (caches:: L2.contains(EA,8))	_latency = params:: L2::latency;
 		    else if (caches:: L3.contains(EA,8)) 	_latency = params:: L3::latency;
@@ -696,6 +697,7 @@ namespace pipelined
 		{
 		    GPR[_RA].used(cycle);
 		    u32 EA = GPR[_RA].data();			// compute effective address of load
+			std::cout << "checkpoint before load\n";
 		    u8* data = load(EA, 8);			// fill the cache with the line, if not already there
 		    double RES = *((double*)data);		// get data from the cache
 		    FPR[_FT].idx()   = _idx;
@@ -1036,7 +1038,7 @@ namespace pipelined
 		gprnum	_RA;
 		i16	_SI;
 	    public:
-		addi(gprnum RT, gprnum RA, i16 SI, u32 addr) : instruction(addr) { _RT = RT; _RA = RA; _SI = SI; }
+		muli(gprnum RT, gprnum RA, i16 SI, u32 addr) : instruction(addr) { _RT = RT; _RA = RA; _SI = SI; }
 		bool process() { return operations::process(new operations::muli(_RT, _RA, _SI), dispatched()); }
 		static bool execute(gprnum RT, gprnum RA, i16 SI, u32 line) { return instructions::process(new muli(RT, RA, SI, 4*line)); }
 		std::string dasm() { std::string str = "muli (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }

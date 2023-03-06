@@ -1,5 +1,5 @@
-#ifndef _MXV_HH_
-#define _MXV_HH_
+#ifndef _SPMV_HH_
+#define _SPMV_HH_
 
 namespace pipelined
 {
