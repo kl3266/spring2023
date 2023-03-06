@@ -17,6 +17,7 @@
 
 // 2.2. Arithmetic instructions
 #define addi(RT, RA, SI)	instructions::addi::execute(RT, RA, SI, __LINE__)
+#define muli(RT, RA, SI)	instructions::muli::execute(RT, RA, SI, __LINE__)
 
 // 2.3. Compare instructions
 #define cmpi(RA, SI)		instructions::cmpi::execute(RA, SI, __LINE__)

@@ -494,6 +494,35 @@ namespace pipelined
 		std::string dasm() { std::string str = "addi (p" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
 
+	class muli : public operation
+	{
+	    private:
+		gprnum	_RT;
+		gprnum 	_RA;
+		i16	_SI;
+		u32	_idx;
+	    public:
+		addi(gprnum RT, gprnum RA, i16 SI) { _RT = RT; _RA = RA, _SI = SI; }
+		units::unit& unit() { return units::FXU; }
+		u64 target(u64 cycle) 
+		{ 
+		    GPR[_RT].busy() = false;
+		    _idx = PRF::find_next();
+		    return max(cycle, PRF::R[_idx].used());
+		}
+		bool issue(u64 cycle)
+		{
+		    GPR[_RA].used(cycle);
+		    u32 RES = GPR[_RA].data() * _SI; 
+		    GPR[_RT].idx()   = _idx; 
+		    GPR[_RT].data()  = RES;
+		    GPR[_RT].ready() = cycle + latency(); 
+		    return false; 
+		}
+		u64 ready() { return max(GPR[_RA].ready()); }
+		std::string dasm() { std::string str = "muli (p" + std::to_string(_idx) + ", p" + std::to_string(GPR[_RA].idx()) + ", " + std::to_string(_SI) + ")"; return str; }
+	};
+
 	class cmpi : public operation
 	{
 	    private:
@@ -956,6 +985,19 @@ namespace pipelined
 		bool process() { return operations::process(new operations::addi(_RT, _RA, _SI), dispatched()); }
 		static bool execute(gprnum RT, gprnum RA, i16 SI, u32 line) { return instructions::process(new addi(RT, RA, SI, 4*line)); }
 		std::string dasm() { std::string str = "addi (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
+	};
+
+	class muli : public instruction
+	{
+	    private:
+		gprnum	_RT;
+		gprnum	_RA;
+		i16	_SI;
+	    public:
+		addi(gprnum RT, gprnum RA, i16 SI, u32 addr) : instruction(addr) { _RT = RT; _RA = RA; _SI = SI; }
+		bool process() { return operations::process(new operations::muli(_RT, _RA, _SI), dispatched()); }
+		static bool execute(gprnum RT, gprnum RA, i16 SI, u32 line) { return instructions::process(new muli(RT, RA, SI, 4*line)); }
+		std::string dasm() { std::string str = "muli (r" + std::to_string(_RT) + ", r" + std::to_string(_RA) + ", " + std::to_string(_SI) + ")"; return str; }
 	};
 
 	class cmpi : public instruction
