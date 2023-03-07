@@ -414,11 +414,11 @@ namespace pipelined
 
 		    std::ios state(nullptr);
 		    state.copyfmt(out);
-		    out << std::setw( 9) << std::setfill('0') << _count     << " , ";
-		    out << std::setw(20) << std::setfill(' ') << dasm()     << " , ";
-		    out << std::setw( 9) << std::setfill('0') << _ready	    << " , ";
-		    out << std::setw( 9) << std::setfill('0') << _issue     << " , ";
-		    out << std::setw( 9) << std::setfill('0') << _complete;
+		    out << std::setw( 8) << std::setfill('0') << _count     << " , ";
+		    out << std::setw(32) << std::setfill(' ') << dasm()     << " , ";
+		    out << std::setw( 8) << std::setfill('0') << _ready	    << " , ";
+		    out << std::setw( 8) << std::setfill('0') << _issue     << " , ";
+		    out << std::setw( 8) << std::setfill('0') << _complete;
 		    out << std::endl;
 		    out.copyfmt(state);
 		}
@@ -1288,7 +1288,7 @@ namespace pipelined
 		    state.copyfmt(out);
 		    out << std::setw( 7) << std::setfill('0') << _count     	<< " , ";
 		    out << "0x" << std::hex << std::setw( 4) << std::setfill('0') << _addr << std::dec << (_hit ? '*' : ' ') << ", ";
-		    out << std::setw(20) << std::setfill(' ') << dasm()     	<< " , ";
+		    out << std::setw(30) << std::setfill(' ') << dasm()     	<< " , ";
 		    out << std::setw( 7) << std::setfill('0') << _fetched     	<< " , ";
 		    out << std::setw( 7) << std::setfill('0') << _decoded   	<< " , ";
 		    out << std::setw( 7) << std::setfill('0') << _dispatched   	<< " , ";
