@@ -28,7 +28,7 @@ void test_sgemv(u32 m, u32 n)
     pipelined::GPR[7].data() = N;
     pipelined::GPR[8].data() = M;
     
-    pipelined::sgemv(0,0,0,0,0,0);
+    pipelined::sgemv((float*)(pipelined::MEM.data() + Y),(float*)(pipelined::MEM.data() + A), (float*)(pipelined::MEM.data() + X), M, N, M);
 
     pipelined::caches::L2.flush();
     pipelined::caches::L3.flush();
