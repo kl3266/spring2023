@@ -20,8 +20,8 @@ namespace pipelined
     const u32	params::L2::linesize = 16;
 
     const u32 	params::L3::latency = 8;
-    const u32	params::L3::nsets = 64;
-    const u32 	params::L3::nways = 16;
+    const u32	params::L3::nsets = 64;				// Must be same nsets of L2!
+    const u32 	params::L3::nways = 16;				// nways can be larger
     const u32	params::L3::linesize = 16;
 
     const u32	params::GPR::N = 16;
@@ -466,9 +466,9 @@ namespace pipelined
 		caches::L2.miss(EA, L);
 
 		// let us free up space in L3 before we evict L2
-		caches::entry *empty = caches::L3.evict(EA, L, MEM);	// evict a line from L3 to memory
-		caches::L2.evict(EA, L, *empty);			// evict a line from L2 to L3
-		if (empty->valid) caches::L1D.evict(EA, L);		// if a valid entry was evicted from L2, must be evicted from L1
+		caches::entry *empty = caches::L3.evict(EA, L, MEM);					// evict a line from L3 to memory
+		caches::L2.evict(EA, L, *empty);							// evict a line from L2 to L3 (nsets must be the same!)
+		if (empty->valid) caches::L1D.evict((empty->addr) * (caches::L3.linesize()), L);	// if a valid entry was evicted from L2, must be evicted from L1
 
 		// Now, let us see if we find the data in L3
 		caches::L3.access(EA, L);
