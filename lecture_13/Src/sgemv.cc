@@ -35,7 +35,7 @@ loopi:  cmpi(r9,0);			// m == 0?
 	add(r10, r10, r12);		// A[:,j] += 4*CNT
 	add(r13, r13, r12);		// y      += 4*CNT
 	sub(r9, r9, r11);		// m      -= CNT
-	b(loopi);			// i++	
+	b(loopi);			// i+=4
 nextj:  add(r4, r4, r8);		// r4 = A[:,j+1]
 	addi(r5, r5, 4);		// x++
 	addi(r7, r7, -1);		// n--
