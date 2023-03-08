@@ -2,7 +2,7 @@
 
 namespace pipelined
 {
-    bool	tracing = false;
+    bool	tracing = true;
     bool	operations::operation::first = true;
     bool	instructions::instruction::first = true;
 
@@ -12,17 +12,17 @@ namespace pipelined
     const u32 	params::L1::latency = 2;
     const u32	params::L1::nsets = 16;
     const u32 	params::L1::nways = 4;
-    const u32	params::L1::linesize = 8;
+    const u32	params::L1::linesize = 16;
 
     const u32 	params::L2::latency = 4;
     const u32	params::L2::nsets = 64;
     const u32 	params::L2::nways = 4;
-    const u32	params::L2::linesize = 8;
+    const u32	params::L2::linesize = 16;
 
     const u32 	params::L3::latency = 8;
     const u32	params::L3::nsets = 64;
     const u32 	params::L3::nways = 16;
-    const u32	params::L3::linesize = 8;
+    const u32	params::L3::linesize = 16;
 
     const u32	params::GPR::N = 16;
     const u32 	params::FPR::N = 8;
