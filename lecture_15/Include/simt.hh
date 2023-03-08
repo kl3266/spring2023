@@ -13,7 +13,9 @@ class simt
 
     public:
 	static u32	i() { return _i; }
+	static u32	j() { return _j; }
 	static u32&	seti() { return _i; }
+	static u32&	setj() { return _j; }
 };
 
 class kernel
@@ -76,6 +78,29 @@ class	kernel5 : public kernel
 	kernel5<T1,T2,T3,T4,T5>& operator[](u32 n) { (*(kernel*)this)[n]; return *this; }
 };
 
+template <typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7>
+class	kernel7 : public kernel
+{
+    private:
+	void (*_f)(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7);
+    public:
+	kernel7(void (*f)(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7)) { _f = f; }
+	void operator()(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7) 
+	{ 
+	    assert(dimensions() == 2);
+	    u32 m = shape(0);
+	    u32 n = shape(1);
+	    for (u32 i=0; i<m; i++)
+		for (u32 j=0; j<n; j++)
+		{
+		    simt::seti() = i;
+		    simt::setj() = j;
+		    _f(arg1, arg2, arg3, arg4, arg5, arg6, arg7); 
+		}
+	}
+	kernel7<T1,T2,T3,T4,T5,T6,T7>& operator[](u32 n) { (*(kernel*)this)[n]; return *this; }
+};
+
 template <typename T1>
 kernel1<T1> Kernel
 (
@@ -101,6 +126,16 @@ kernel5<T1,T2,T3,T4,T5>	Kernel
 )
 {
     return kernel5<T1,T2,T3,T4,T5>(f);
+}
+
+
+template <typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7>
+kernel7<T1,T2,T3,T4,T5,T6,T7>	Kernel
+(
+    void (*f)(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7)
+)
+{
+    return kernel7<T1,T2,T3,T4,T5,T6,T7>(f);
 }
 
 #endif
