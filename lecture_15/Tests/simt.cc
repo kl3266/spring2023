@@ -68,7 +68,16 @@ class	kernel5 : public kernel
 	void (*_f)(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5);
     public:
 	kernel5(void (*f)(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5)) { _f = f; }
-	void operator()(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5) { _f(arg1, arg2, arg3, arg4, arg5); }
+	void operator()(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5) 
+	{ 
+	    assert(dimensions() == 1);
+	    u32 n = shape(0);
+	    for (u32 i=0; i<n; i++)
+	    {
+		simt::seti() = i;
+		_f(arg1, arg2, arg3, arg4, arg5); 
+	    }
+	}
 	kernel5<T1,T2,T3,T4,T5>& operator[](u32 n) { (*(kernel*)this)[n]; return *this; }
 };
 
@@ -131,8 +140,9 @@ int main
 
 	bool pass = true;
 	for (u32 i=0; i<n; i++) if (dst[i] != src[i]) pass - false;
-	if (pass) std::cout << " | PASS" << std::endl;
-	else      std::cout << " | FAIL" << std::endl;
+	if (pass) std::cout << " | PASS";
+	else      std::cout << " | FAIL";
+	std::cout << std::endl;
     }
 
     delete [] src;
@@ -141,10 +151,17 @@ int main
     for (u32 m=2; m<64; m *= 2)
     {
 	u32 n = 2*m;
-	double *y = new double[m];
-	double *A = new double[m*n];
-	double *x = new double[n];
+	double *y = new double[m];	for (u32 i=0; i<m; i++) y[i] = 0.0;
+	double *A = new double[m*n];	for (u32 i=0; i<m; i++) for (u32 j=0; j<n; j++) A[i+m*j] = (double)i;
+	double *x = new double[n];	for (u32 j=0; j<n; j++) x[j] = (float)j;
 	Kernel(vxv)[m](y, A, x, n, m);
+
+	std::cout << "m = " << m << ", n = " << n << " ";
+	bool pass = true;
+	for (u32 i=0; i<m; i++) if (y[i] != ((n*(n-1))/2)*i) pass = false;
+	if (pass) std::cout << " | PASS";
+	else      std::cout << " | FAIL";
+	std::cout << std::endl;
     }
 
     return 0;
