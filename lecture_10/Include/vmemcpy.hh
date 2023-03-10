@@ -3,7 +3,7 @@
 
 namespace pipelined
 {
-    void *vmemcpy(void *dest, const void *src, size_t n);
+    void *vmemcpy(void *dest, const void *src, size_t n, u32 v_size);
 };
 
 #endif

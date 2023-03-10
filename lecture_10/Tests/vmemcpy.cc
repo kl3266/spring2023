@@ -19,8 +19,9 @@ int main
 
     pipelined::zeromem();
     const uint32_t N = 1024;
+	const uint32_t VSIZE = 32;
     for (uint32_t i=0; i<N; i++) pipelined::MEM[i] = rand() % 0xff;
-    for (uint32_t n = 1; n<=N; n *= 2)
+    for (uint32_t n = 3; n<=N; n *= 2)
     {
 	pipelined::zeroctrs();
 	for (uint32_t i=0; i<n; i++) pipelined::MEM[N+i] = 0;
@@ -28,8 +29,9 @@ int main
 	pipelined::GPR[3].data() = N;
 	pipelined::GPR[4].data() = 0;
 	pipelined::GPR[5].data() = n;
+	pipelined::GPR[8].data() = VSIZE;
 	
-	pipelined::vmemcpy(0,0,0);
+	pipelined::vmemcpy(0,0,0,0);
 
 	pipelined::caches::L2.flush();
 	pipelined::caches::L3.flush();
@@ -37,8 +39,8 @@ int main
 	double rate = (double)pipelined::counters::cycles/(double)n;
 	
 	if (pipelined::tracing) printf("\n");
-	printf("n = %6d : instructions = %6lu, cycles = %6lu, L1D accesses= %6lu, L1D hits = %6lu",
-		n, pipelined::counters::operations, pipelined::counters::cycles, pipelined::caches::L1D.accesses, pipelined::caches::L1D.hits);
+	printf("n = %6d, VSIZE = %6d : instructions = %6lu, cycles = %6lu, L1D accesses= %6lu, L1D hits = %6lu", n,
+		VSIZE, pipelined::counters::operations, pipelined::counters::cycles, pipelined::caches::L1D.accesses, pipelined::caches::L1D.hits);
 	printf(", cyc/B = %10.2f", rate);
 
 	bool pass = true;

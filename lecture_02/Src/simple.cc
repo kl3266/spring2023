@@ -69,43 +69,43 @@ namespace simple
 	bool cache::hit(uint32_t addr)
 	{
 	    counters::L1::accesses++;
-	    uint32_t lineaddr = addr / linesize();
-	    uint32_t setix = lineaddr % nsets();
+	    uint32_t lineaddr = addr / linesize();	//what is lineaddr and why is it addr/linesize?
+	    uint32_t setix = lineaddr % nsets();	//why is setindex lineaddr % nsets?
 	    uint32_t wayix;
 	    for (wayix = 0; wayix < nways(); wayix++)
 	    {
-		if (sets()[setix][wayix].valid && (sets()[setix][wayix].addr == lineaddr)) break;
+		if (sets()[setix][wayix].valid && (sets()[setix][wayix].addr == lineaddr)) break;	//hit at the way
 	    }
 	    if (wayix < nways())
 	    {
 		// L1 cache hit
 		counters::L1::hits++;
-		sets()[setix][wayix].touched = cycles;
-		return true;
+		sets()[setix][wayix].touched = cycles;	//why is this touched time = cycles... found this at this location at this time or cycle! cycles = current cycle time.
+		return true;	// return true  bc found the cache
 	    }
 	    else
 	    {
 		// L1 cache miss
 		counters::L1::misses++;
-		// find the LRU entry
+		// find the LRU entry - place to put the new data
 		uint64_t lasttouch = cycles;
-		uint32_t lru = nways();
+		uint32_t lru = nways();	// least recently used
 		for (wayix = 0; wayix < nways(); wayix++)
 		{
-		    if (!sets()[setix][wayix].valid)
+		    if (!sets()[setix][wayix].valid)	// invalid entry way = empty way
 		    {
 			// invalid entry, can use this one as the lru
 			lru = wayix;
 			break;
 		    }
-		    if (sets()[setix][wayix].touched <= lasttouch)
+		    if (sets()[setix][wayix].touched <= lasttouch)	//????????????
 		    {
 			// older than current candidate - update
 			lru = wayix;
 			lasttouch = sets()[setix][wayix].touched;
 		    }
 		}
-		assert(lru < nways());
+		assert(lru < nways());	//found an entry to put things -> set valid, addr, and touched
 		sets()[setix][lru].valid = true;
 		sets()[setix][lru].addr = lineaddr;
 		sets()[setix][lru].touched = cycles;

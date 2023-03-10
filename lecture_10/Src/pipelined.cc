@@ -12,17 +12,17 @@ namespace pipelined
     const u32 	params::L1::latency = 2;
     const u32	params::L1::nsets = 16;
     const u32 	params::L1::nways = 4;
-    const u32	params::L1::linesize = 16;
+    const u32	params::L1::linesize = params::vector::VSIZE;
 
     const u32 	params::L2::latency = 4;
     const u32	params::L2::nsets = 64;
     const u32 	params::L2::nways = 4;
-    const u32	params::L2::linesize = 16;
+    const u32	params::L2::linesize = params::vector::VSIZE;
 
     const u32 	params::L3::latency = 8;
     const u32	params::L3::nsets = 64;
     const u32 	params::L3::nways = 16;
-    const u32	params::L3::linesize = 16;
+    const u32	params::L3::linesize = params::vector::VSIZE;
 
     const u32	params::GPR::N = 16;
     const u32 	params::FPR::N = 8;
@@ -514,13 +514,13 @@ namespace pipelined
 	modified = true;
     }
 
-    void pipelined::caches::entry::store(u32 EA, const u8 (&V)[16])
+    void pipelined::caches::entry::store(u32 EA, const u8 (&V)[params::vector::VSIZE])
     {
 	u32 offset = EA % data.size();
 	assert(offset == 0);
 	assert(sizeof(V) == data.size());
 	u8 *buff = (u8*)(data.data() + offset);
-	for (u32 i=0; i<16; i++) *((u8*)buff + i) = V[i];
+	for (u32 i=0; i<params::vector::VSIZE; i++) *((u8*)buff + i) = V[i];
 	modified = true;
     }
 
