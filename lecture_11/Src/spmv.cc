@@ -16,8 +16,8 @@ namespace pipelined
     {
 loop:   cmpi(r4, 0);            // k == 0?
         beq(end);               // while(k != 0)
-        lw(r11,r5);             // load u32 i[k] value into GPR[11]
         lw(r10,r6);             // load u32 j[k] value into GPR[10]
+        lw(r11,r5);             // load u32 i[k] value into GPR[11]
         muli(r10, r10, 8);       // GPR[10] = j[k] * 8
         muli(r11, r11, 8);       // GPR[11] = i[k] * 8
         add(r10, r8, r10);     // &x + 8 * j[k]

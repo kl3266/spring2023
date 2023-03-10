@@ -22,7 +22,7 @@ void test_spmv(u32 m, u32 n)
     double a_row[10] = {0,1,2,3,4,5,6,7,8,9};
     uint32_t i_row[10] = {0,0,1,1,2,3,3,4,5,5};
     uint32_t j_row[10] = {0,2,1,3,1,0,4,3,2,4};
-    bool row = false;   // control row major order or column major order
+    bool row = true;   // control row major order or column major order
 
     for (uint32_t i=0; i<M; i++) *((double*)(pipelined::MEM.data() + Y + i*sizeof(double))) = 0.0;  // set Y to 0
     for (uint32_t j=0; j<N; j++) *((double*)(pipelined::MEM.data() + X + j*sizeof(double))) = (double) j;   // populate x
